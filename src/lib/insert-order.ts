@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 type OrderInsert = {
   table_number: number;
   customer_name: string;
-  customer_phone?: string;
+  customer_phone?: string | null;
   total: number;
   status: "new";
 };

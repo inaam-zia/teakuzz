@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { formatPrice } from "@/lib/format";
+import { normalizePhone, isValidPhone } from "@/lib/phone";
 import type { CartItem, MenuCategory, MenuItem } from "@/lib/types";
 
 type Props = {
@@ -9,29 +11,21 @@ type Props = {
   cafeName: string;
 };
 
-type Step = "welcome" | "menu" | "done";
-
-function normalizePhone(value: string): string {
-  return value.replace(/\D/g, "");
-}
-
-function isValidPhone(phone: string): boolean {
-  const digits = normalizePhone(phone);
-  return digits.length >= 10 && digits.length <= 13;
-}
+type Step = "menu" | "done";
 
 export default function OrderClient({ tableNumber, cafeName }: Props) {
-  const [step, setStep] = useState<Step>("welcome");
+  const [step, setStep] = useState<Step>("menu");
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [welcomeError, setWelcomeError] = useState("");
+  const [checkoutError, setCheckoutError] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [showCart, setShowCart] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
   const [lastOrderTotal, setLastOrderTotal] = useState(0);
 
   useEffect(() => {
@@ -62,23 +56,6 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
   const cartTotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
 
-  function startOrdering(e: React.FormEvent) {
-    e.preventDefault();
-    setWelcomeError("");
-
-    if (!customerName.trim()) {
-      setWelcomeError("Please enter your name");
-      return;
-    }
-
-    if (!isValidPhone(customerPhone)) {
-      setWelcomeError("Please enter a valid phone number (10 digits)");
-      return;
-    }
-
-    setStep("menu");
-  }
-
   function addToCart(item: MenuItem) {
     setCart((prev) => {
       const existing = prev.find((c) => c.menuItemId === item.id);
@@ -106,8 +83,32 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
     );
   }
 
-  async function placeOrder() {
+  function openCheckout() {
+    setCheckoutError("");
+    setShowCheckout(true);
+  }
+
+  async function submitOrder(e: React.FormEvent) {
+    e.preventDefault();
     if (!cart.length) return;
+
+    setCheckoutError("");
+
+    if (!customerName.trim()) {
+      setCheckoutError("Please enter your name");
+      return;
+    }
+
+    if (!customerPhone.trim()) {
+      setCheckoutError("Please enter your phone number");
+      return;
+    }
+
+    if (!isValidPhone(customerPhone)) {
+      setCheckoutError("Please enter a valid 10-digit phone number");
+      return;
+    }
+
     setSubmitting(true);
     setError("");
 
@@ -126,7 +127,7 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
     setSubmitting(false);
 
     if (!res.ok) {
-      setError(data.error || "Could not place order");
+      setCheckoutError(data.error || "Could not place order");
       return;
     }
 
@@ -134,95 +135,18 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
     setStep("done");
     setCart([]);
     setShowCart(false);
+    setShowCheckout(false);
   }
 
   function orderAgain() {
-    setStep("welcome");
+    setStep("menu");
     setCustomerName("");
     setCustomerPhone("");
     setCart([]);
     setError("");
-    setWelcomeError("");
-  }
-
-  if (step === "welcome") {
-    return (
-      <main className="order-bg flex min-h-screen flex-col">
-        <div className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-5 py-10">
-          <div className="order-hero-card">
-            <div className="mb-6 text-center">
-              <span className="table-badge">Table {tableNumber}</span>
-              <h1 className="mt-4 text-3xl font-bold tracking-tight text-cafe-900">
-                Welcome to {cafeName}
-              </h1>
-              <p className="mt-2 text-cafe-600">
-                Tell us who you are, then browse our menu and order from your phone.
-              </p>
-            </div>
-
-            {loading ? (
-              <div className="py-8 text-center text-cafe-500">Loading menu…</div>
-            ) : error && !items.length ? (
-              <div className="rounded-xl bg-red-50 px-4 py-3 text-center text-sm text-red-700">
-                {error}
-              </div>
-            ) : (
-              <form onSubmit={startOrdering} className="space-y-4">
-                <div>
-                  <label htmlFor="name" className="order-label">
-                    Your name
-                  </label>
-                  <input
-                    id="name"
-                    type="text"
-                    placeholder="e.g. Rahul"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    className="order-input"
-                    autoComplete="name"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="phone" className="order-label">
-                    Phone number
-                  </label>
-                  <div className="relative">
-                    <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-cafe-400">
-                      +91
-                    </span>
-                    <input
-                      id="phone"
-                      type="tel"
-                      inputMode="numeric"
-                      placeholder="98765 43210"
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      className="order-input pl-14"
-                      autoComplete="tel"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {welcomeError && (
-                  <p className="text-center text-sm text-red-600">{welcomeError}</p>
-                )}
-
-                <button type="submit" className="order-btn w-full">
-                  View menu →
-                </button>
-              </form>
-            )}
-          </div>
-
-          <p className="mt-6 text-center text-xs text-cafe-400">
-            No app needed · Pay at the counter
-          </p>
-        </div>
-      </main>
-    );
+    setCheckoutError("");
+    setShowCheckout(false);
+    setShowCart(false);
   }
 
   if (step === "done") {
@@ -241,6 +165,9 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
           <button onClick={orderAgain} className="order-btn-secondary mt-6 w-full">
             Place another order
           </button>
+          <Link href="/my-orders" className="order-btn-secondary mt-3 inline-flex w-full">
+            View my past orders
+          </Link>
         </div>
       </main>
     );
@@ -255,15 +182,15 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
               {cafeName}
             </p>
             <h1 className="mt-1 text-xl font-bold text-cafe-900">Table {tableNumber}</h1>
-            <p className="mt-0.5 text-sm text-cafe-600">
-              Hi {customerName.split(" ")[0]} · tap to add items
-            </p>
+            <p className="mt-0.5 text-sm text-cafe-600">Tap items to add to your order</p>
           </div>
           <span className="table-badge-sm">{cartCount > 0 ? cartCount : "☕"}</span>
         </div>
       </header>
 
-      {error && !items.length ? (
+      {loading ? (
+        <p className="px-5 py-8 text-center text-cafe-500">Loading menu…</p>
+      ) : error && !items.length ? (
         <p className="px-5 py-8 text-center text-red-600">{error}</p>
       ) : (
         <div className="space-y-7 px-5 py-2">
@@ -281,9 +208,7 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
                       className="menu-item-card group"
                     >
                       <div className="flex-1">
-                        <p className="font-semibold text-cafe-900 group-active:scale-[0.99]">
-                          {item.name}
-                        </p>
+                        <p className="font-semibold text-cafe-900">{item.name}</p>
                         {item.description && (
                           <p className="mt-1 text-sm leading-relaxed text-cafe-500">
                             {item.description}
@@ -334,7 +259,10 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold text-cafe-900">Your order</h3>
                 <button
-                  onClick={() => setShowCart(false)}
+                  onClick={() => {
+                    setShowCart(false);
+                    setShowCheckout(false);
+                  }}
                   className="text-sm font-medium text-cafe-600"
                 >
                   ← Back
@@ -369,23 +297,64 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
                 ))}
               </div>
 
-              <div className="rounded-xl bg-cafe-50 px-4 py-3 text-sm text-cafe-600">
-                <p>
-                  <strong className="text-cafe-900">{customerName}</strong>
-                </p>
-                <p>+91 {normalizePhone(customerPhone)}</p>
-                <p className="mt-1">Table {tableNumber}</p>
-              </div>
+              <p className="text-sm text-cafe-500">Table {tableNumber}</p>
 
-              {error && <p className="text-sm text-red-600">{error}</p>}
+              {!showCheckout ? (
+                <button onClick={openCheckout} className="order-btn w-full">
+                  Place order · {formatPrice(cartTotal)}
+                </button>
+              ) : (
+                <form onSubmit={submitOrder} className="space-y-4 rounded-2xl border border-cafe-200 bg-cafe-50/80 p-4">
+                  <p className="text-sm font-semibold text-cafe-800">Almost done — your details</p>
 
-              <button
-                onClick={placeOrder}
-                disabled={submitting}
-                className="order-btn w-full"
-              >
-                {submitting ? "Sending order…" : `Place order · ${formatPrice(cartTotal)}`}
-              </button>
+                  <div>
+                    <label htmlFor="checkout-name" className="order-label">
+                      Your name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="checkout-name"
+                      type="text"
+                      placeholder="e.g. Rahul"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      className="order-input"
+                      autoComplete="name"
+                      autoFocus
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="checkout-phone" className="order-label">
+                      Phone number <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-cafe-400">
+                        +91
+                      </span>
+                      <input
+                        id="checkout-phone"
+                        type="tel"
+                        inputMode="numeric"
+                        placeholder="98765 43210"
+                        value={customerPhone}
+                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        className="order-input pl-14"
+                        autoComplete="tel"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {checkoutError && (
+                    <p className="text-sm text-red-600">{checkoutError}</p>
+                  )}
+
+                  <button type="submit" disabled={submitting} className="order-btn w-full">
+                    {submitting ? "Sending order…" : `Confirm · ${formatPrice(cartTotal)}`}
+                  </button>
+                </form>
+              )}
             </div>
           )}
         </div>

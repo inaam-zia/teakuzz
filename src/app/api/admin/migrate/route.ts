@@ -3,7 +3,19 @@ import { isAdminAuthenticated } from "@/lib/auth";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/supabase-errors";
 
-const MIGRATION_SQL = `alter table orders add column if not exists customer_phone text;`;
+const MIGRATION_SQL = `
+alter table orders add column if not exists customer_phone text;
+create index if not exists orders_customer_phone_idx on orders (customer_phone);
+create table if not exists otp_verifications (
+  id uuid primary key default gen_random_uuid(),
+  phone text not null,
+  code_hash text not null,
+  expires_at timestamptz not null,
+  attempts int default 0,
+  created_at timestamptz default now()
+);
+create index if not exists otp_verifications_phone_idx on otp_verifications (phone, created_at desc);
+`.trim();
 
 export async function POST() {
   if (!isAdminAuthenticated()) {
@@ -47,11 +59,16 @@ export async function GET() {
 
   try {
     const supabase = createServerClient();
-    const { error } = await supabase.from("orders").select("customer_phone").limit(1);
+    const { error: phoneError } = await supabase.from("orders").select("customer_phone").limit(1);
+    const { error: otpError } = await supabase.from("otp_verifications").select("id").limit(1);
 
     const needsMigration =
-      !!error &&
-      (error.message.includes("customer_phone") || error.message.includes("schema cache"));
+      (!!phoneError &&
+        (phoneError.message.includes("customer_phone") ||
+          phoneError.message.includes("schema cache"))) ||
+      (!!otpError &&
+        (otpError.message.includes("otp_verifications") ||
+          otpError.message.includes("schema cache")));
 
     return NextResponse.json({ needsMigration, sql: MIGRATION_SQL });
   } catch {

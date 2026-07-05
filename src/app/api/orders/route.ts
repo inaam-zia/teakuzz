@@ -2,9 +2,14 @@ import { NextResponse } from "next/server";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/supabase-errors";
 import { insertOrder } from "@/lib/insert-order";
+import { isAdminAuthenticated } from "@/lib/auth";
 import type { PlaceOrderPayload } from "@/lib/types";
 
 export async function GET(request: Request) {
+  if (!isAdminAuthenticated()) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   if (!isSupabaseConfigured()) {
     return NextResponse.json(
       { error: "Database not configured", setupRequired: true },
@@ -73,9 +78,18 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!body.customerName?.trim() || !body.customerPhone?.trim()) {
+    if (!body.customerName?.trim()) {
+      return NextResponse.json({ error: "Name is required" }, { status: 400 });
+    }
+
+    const phoneDigits = (body.customerPhone || "").replace(/\D/g, "");
+    if (!phoneDigits) {
+      return NextResponse.json({ error: "Phone number is required" }, { status: 400 });
+    }
+
+    if (phoneDigits.length < 10 || phoneDigits.length > 13) {
       return NextResponse.json(
-        { error: "Name and phone number are required" },
+        { error: "Invalid phone number" },
         { status: 400 }
       );
     }
@@ -123,7 +137,7 @@ export async function POST(request: Request) {
     const { data: order, error: orderError } = await insertOrder(supabase, {
       table_number: body.tableNumber,
       customer_name: body.customerName.trim(),
-      customer_phone: body.customerPhone.trim(),
+      customer_phone: phoneDigits || null,
       total,
       status: "new",
     });

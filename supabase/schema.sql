@@ -41,6 +41,18 @@ create table if not exists order_items (
 create index if not exists orders_created_at_idx on orders (created_at desc);
 create index if not exists orders_table_number_idx on orders (table_number);
 create index if not exists orders_status_idx on orders (status);
+create index if not exists orders_customer_phone_idx on orders (customer_phone);
+
+create table if not exists otp_verifications (
+  id uuid primary key default gen_random_uuid(),
+  phone text not null,
+  code_hash text not null,
+  expires_at timestamptz not null,
+  attempts int default 0,
+  created_at timestamptz default now()
+);
+
+create index if not exists otp_verifications_phone_idx on otp_verifications (phone, created_at desc);
 
 -- Sample menu (skip if you already have items)
 insert into menu_categories (name, sort_order)
