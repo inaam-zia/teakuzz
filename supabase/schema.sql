@@ -1,12 +1,16 @@
--- Run this in Supabase SQL Editor (Dashboard → SQL → New query)
+-- ============================================================
+-- NEW PROJECT ONLY — first time setup (empty database)
+-- If you get "already exists" errors, your DB is set up.
+-- For phone column only, run: add-customer-phone.sql
+-- ============================================================
 
-create table menu_categories (
+create table if not exists menu_categories (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   sort_order int default 0
 );
 
-create table menu_items (
+create table if not exists menu_items (
   id uuid primary key default gen_random_uuid(),
   category_id uuid references menu_categories(id) on delete set null,
   name text not null,
@@ -16,7 +20,7 @@ create table menu_items (
   created_at timestamptz default now()
 );
 
-create table orders (
+create table if not exists orders (
   id uuid primary key default gen_random_uuid(),
   table_number int not null,
   customer_name text,
@@ -26,7 +30,7 @@ create table orders (
   created_at timestamptz default now()
 );
 
-create table order_items (
+create table if not exists order_items (
   id uuid primary key default gen_random_uuid(),
   order_id uuid references orders(id) on delete cascade not null,
   item_name text not null,
@@ -34,21 +38,26 @@ create table order_items (
   quantity int not null check (quantity > 0)
 );
 
-create index orders_created_at_idx on orders (created_at desc);
-create index orders_table_number_idx on orders (table_number);
-create index orders_status_idx on orders (status);
+create index if not exists orders_created_at_idx on orders (created_at desc);
+create index if not exists orders_table_number_idx on orders (table_number);
+create index if not exists orders_status_idx on orders (status);
 
--- Sample menu
-insert into menu_categories (name, sort_order) values
-  ('Coffee', 1),
-  ('Food', 2),
-  ('Drinks', 3);
+-- Sample menu (skip if you already have items)
+insert into menu_categories (name, sort_order)
+select v.name, v.sort_order
+from (values ('Coffee', 1), ('Food', 2), ('Drinks', 3)) as v(name, sort_order)
+where not exists (select 1 from menu_categories);
 
-insert into menu_items (category_id, name, description, price) values
-  ((select id from menu_categories where name = 'Coffee'), 'Espresso', 'Single shot', 2.50),
-  ((select id from menu_categories where name = 'Coffee'), 'Cappuccino', 'Espresso with steamed milk', 4.00),
-  ((select id from menu_categories where name = 'Coffee'), 'Latte', 'Espresso with extra milk', 4.50),
-  ((select id from menu_categories where name = 'Food'), 'Avocado Toast', 'Sourdough, avocado, chili flakes', 8.50),
-  ((select id from menu_categories where name = 'Food'), 'Croissant', 'Butter croissant', 3.50),
-  ((select id from menu_categories where name = 'Drinks'), 'Fresh Orange Juice', '250ml', 3.00),
-  ((select id from menu_categories where name = 'Drinks'), 'Iced Tea', 'Peach or lemon', 2.50);
+insert into menu_items (category_id, name, description, price)
+select c.id, v.name, v.description, v.price
+from (values
+  ('Coffee', 'Espresso', 'Single shot', 2.50),
+  ('Coffee', 'Cappuccino', 'Espresso with steamed milk', 4.00),
+  ('Coffee', 'Latte', 'Espresso with extra milk', 4.50),
+  ('Food', 'Avocado Toast', 'Sourdough, avocado, chili flakes', 8.50),
+  ('Food', 'Croissant', 'Butter croissant', 3.50),
+  ('Drinks', 'Fresh Orange Juice', '250ml', 3.00),
+  ('Drinks', 'Iced Tea', 'Peach or lemon', 2.50)
+) as v(cat, name, description, price)
+join menu_categories c on c.name = v.cat
+where not exists (select 1 from menu_items);

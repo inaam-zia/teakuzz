@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/supabase-errors";
+import { insertOrder } from "@/lib/insert-order";
 import type { PlaceOrderPayload } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -119,17 +120,13 @@ export async function POST(request: Request) {
       0
     );
 
-    const { data: order, error: orderError } = await supabase
-      .from("orders")
-      .insert({
-        table_number: body.tableNumber,
-        customer_name: body.customerName.trim(),
-        customer_phone: body.customerPhone.trim(),
-        total,
-        status: "new",
-      })
-      .select()
-      .single();
+    const { data: order, error: orderError } = await insertOrder(supabase, {
+      table_number: body.tableNumber,
+      customer_name: body.customerName.trim(),
+      customer_phone: body.customerPhone.trim(),
+      total,
+      status: "new",
+    });
 
     if (orderError || !order) {
       return NextResponse.json(

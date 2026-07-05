@@ -1,2 +1,6 @@
--- Run this in Supabase SQL Editor if you already created the database earlier
+-- ============================================================
+-- EXISTING PROJECT — run ONLY this (tables already created)
+-- Supabase → SQL Editor → New query → paste → Run
+-- ============================================================
+
 alter table orders add column if not exists customer_phone text;
