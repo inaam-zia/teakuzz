@@ -8,7 +8,10 @@ export default function MenuPage() {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -18,12 +21,18 @@ export default function MenuPage() {
 
   function loadMenu() {
     fetch("/api/menu")
-      .then((r) => r.json())
-      .then((data) => {
+      .then(async (r) => {
+        const data = await r.json();
+        if (!r.ok) {
+          setError(data.error || "Could not load menu");
+          return;
+        }
+        setError("");
         setCategories(data.categories || []);
         setItems(data.items || []);
-        setLoading(false);
-      });
+      })
+      .catch(() => setError("Could not connect to server"))
+      .finally(() => setLoading(false));
   }
 
   useEffect(() => {
@@ -32,7 +41,9 @@ export default function MenuPage() {
 
   async function addItem(e: React.FormEvent) {
     e.preventDefault();
-    await fetch("/api/menu", {
+    setError("");
+
+    const res = await fetch("/api/menu", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -42,8 +53,75 @@ export default function MenuPage() {
         category_id: form.category_id || null,
       }),
     });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      setError(data.error || "Could not save item");
+      return;
+    }
+
     setForm({ name: "", description: "", price: "", category_id: "" });
     setShowForm(false);
+    loadMenu();
+  }
+
+  async function addCategory(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+
+    const res = await fetch("/api/categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newCategoryName }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      setError(data.error || "Could not save category");
+      return;
+    }
+
+    setNewCategoryName("");
+    setShowCategoryForm(false);
+    loadMenu();
+  }
+
+  async function updateCategoryName(category: MenuCategory, name: string) {
+    if (!name.trim() || name.trim() === category.name) return;
+
+    const res = await fetch(`/api/categories/${category.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name.trim() }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error || "Could not update category");
+      return;
+    }
+
+    loadMenu();
+  }
+
+  async function updateItemPrice(item: MenuItem, price: string) {
+    const parsed = parseFloat(price);
+    if (isNaN(parsed) || parsed < 0 || parsed === item.price) return;
+
+    const res = await fetch(`/api/menu/${item.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ price: parsed }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error || "Could not update price");
+      return;
+    }
+
     loadMenu();
   }
 
@@ -62,28 +140,55 @@ export default function MenuPage() {
     loadMenu();
   }
 
-  async function updatePrice(item: MenuItem) {
-    const newPrice = prompt("New price:", String(item.price));
-    if (!newPrice) return;
-    await fetch(`/api/menu/${item.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ price: parseFloat(newPrice) }),
-    });
-    loadMenu();
-  }
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold text-cafe-900">Menu</h2>
-          <p className="text-cafe-600">Add, edit, or hide items</p>
+          <p className="text-cafe-600">Prices in ₹ — tap category or price to edit</p>
         </div>
-        <button onClick={() => setShowForm(!showForm)} className="btn-primary">
-          {showForm ? "Cancel" : "+ Add item"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => {
+              setShowCategoryForm(!showCategoryForm);
+              setShowForm(false);
+            }}
+            className="btn-secondary"
+          >
+            {showCategoryForm ? "Cancel" : "+ Category"}
+          </button>
+          <button
+            onClick={() => {
+              setShowForm(!showForm);
+              setShowCategoryForm(false);
+            }}
+            className="btn-primary"
+          >
+            {showForm ? "Cancel" : "+ Add item"}
+          </button>
+        </div>
       </div>
+
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      {showCategoryForm && (
+        <form onSubmit={addCategory} className="card flex flex-wrap gap-3">
+          <input
+            placeholder="Category name (e.g. Snacks)"
+            value={newCategoryName}
+            onChange={(e) => setNewCategoryName(e.target.value)}
+            className="input-field min-w-[200px] flex-1"
+            required
+          />
+          <button type="submit" className="btn-primary">
+            Save category
+          </button>
+        </form>
+      )}
 
       {showForm && (
         <form onSubmit={addItem} className="card space-y-4">
@@ -95,16 +200,21 @@ export default function MenuPage() {
               className="input-field"
               required
             />
-            <input
-              placeholder="Price"
-              type="number"
-              step="0.01"
-              min="0"
-              value={form.price}
-              onChange={(e) => setForm({ ...form, price: e.target.value })}
-              className="input-field"
-              required
-            />
+            <div className="relative">
+              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-cafe-500">
+                ₹
+              </span>
+              <input
+                placeholder="Price"
+                type="number"
+                step="1"
+                min="0"
+                value={form.price}
+                onChange={(e) => setForm({ ...form, price: e.target.value })}
+                className="input-field pl-8"
+                required
+              />
+            </div>
           </div>
           <input
             placeholder="Description (optional)"
@@ -132,25 +242,35 @@ export default function MenuPage() {
 
       {loading ? (
         <p className="text-cafe-500">Loading…</p>
+      ) : items.length === 0 && categories.length === 0 && !error ? (
+        <div className="card py-12 text-center text-cafe-500">
+          No menu items yet. Add a category or item to get started.
+        </div>
       ) : (
         <div className="space-y-6">
           {categories.map((cat) => {
             const catItems = items.filter((i) => i.category_id === cat.id);
-            if (!catItems.length) return null;
             return (
               <section key={cat.id}>
-                <h3 className="mb-3 text-lg font-bold text-cafe-800">{cat.name}</h3>
-                <div className="space-y-2">
-                  {catItems.map((item) => (
-                    <MenuItemRow
-                      key={item.id}
-                      item={item}
-                      onToggle={() => toggleAvailable(item)}
-                      onEditPrice={() => updatePrice(item)}
-                      onDelete={() => deleteItem(item.id)}
-                    />
-                  ))}
-                </div>
+                <EditableCategoryName
+                  category={cat}
+                  onSave={(name) => updateCategoryName(cat, name)}
+                />
+                {catItems.length === 0 ? (
+                  <p className="text-sm text-cafe-400">No items in this category</p>
+                ) : (
+                  <div className="space-y-2">
+                    {catItems.map((item) => (
+                      <MenuItemRow
+                        key={item.id}
+                        item={item}
+                        onToggle={() => toggleAvailable(item)}
+                        onSavePrice={(price) => updateItemPrice(item, price)}
+                        onDelete={() => deleteItem(item.id)}
+                      />
+                    ))}
+                  </div>
+                )}
               </section>
             );
           })}
@@ -166,7 +286,7 @@ export default function MenuPage() {
                       key={item.id}
                       item={item}
                       onToggle={() => toggleAvailable(item)}
-                      onEditPrice={() => updatePrice(item)}
+                      onSavePrice={(price) => updateItemPrice(item, price)}
                       onDelete={() => deleteItem(item.id)}
                     />
                   ))}
@@ -179,17 +299,83 @@ export default function MenuPage() {
   );
 }
 
+function EditableCategoryName({
+  category,
+  onSave,
+}: {
+  category: MenuCategory;
+  onSave: (name: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(category.name);
+
+  useEffect(() => {
+    setName(category.name);
+  }, [category.name]);
+
+  function save() {
+    setEditing(false);
+    onSave(name);
+  }
+
+  if (editing) {
+    return (
+      <div className="mb-3 flex items-center gap-2">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="input-field max-w-xs py-2 text-lg font-bold"
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === "Enter") save();
+            if (e.key === "Escape") {
+              setName(category.name);
+              setEditing(false);
+            }
+          }}
+        />
+        <button onClick={save} className="btn-primary py-2 text-xs">
+          Save
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setEditing(true)}
+      className="mb-3 flex items-center gap-2 text-lg font-bold text-cafe-800 hover:text-cafe-600"
+      title="Click to edit category name"
+    >
+      {category.name}
+      <span className="text-xs font-normal text-cafe-400">Edit</span>
+    </button>
+  );
+}
+
 function MenuItemRow({
   item,
   onToggle,
-  onEditPrice,
+  onSavePrice,
   onDelete,
 }: {
   item: MenuItem;
   onToggle: () => void;
-  onEditPrice: () => void;
+  onSavePrice: (price: string) => void;
   onDelete: () => void;
 }) {
+  const [editingPrice, setEditingPrice] = useState(false);
+  const [price, setPrice] = useState(String(item.price));
+
+  useEffect(() => {
+    setPrice(String(item.price));
+  }, [item.price]);
+
+  function savePrice() {
+    setEditingPrice(false);
+    onSavePrice(price);
+  }
+
   return (
     <div
       className={`card flex flex-wrap items-center justify-between gap-3 ${
@@ -203,9 +389,38 @@ function MenuItemRow({
         )}
       </div>
       <div className="flex items-center gap-3">
-        <button onClick={onEditPrice} className="font-bold text-cafe-700 hover:underline">
-          {formatPrice(item.price)}
-        </button>
+        {editingPrice ? (
+          <div className="flex items-center gap-1">
+            <span className="text-cafe-600">₹</span>
+            <input
+              type="number"
+              step="1"
+              min="0"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              className="input-field w-24 py-1 text-sm"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") savePrice();
+                if (e.key === "Escape") {
+                  setPrice(String(item.price));
+                  setEditingPrice(false);
+                }
+              }}
+            />
+            <button onClick={savePrice} className="btn-primary px-3 py-1 text-xs">
+              Save
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setEditingPrice(true)}
+            className="font-bold text-cafe-700 hover:underline"
+            title="Click to edit price"
+          >
+            {formatPrice(item.price)}
+          </button>
+        )}
         <button onClick={onToggle} className="btn-secondary text-xs">
           {item.available ? "Hide" : "Show"}
         </button>

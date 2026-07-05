@@ -2,16 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { formatDate, formatPrice } from "@/lib/format";
+import { fetchJsonArray } from "@/lib/parse-api";
 import type { OrderWithItems } from "@/lib/types";
 
 export default function HistoryPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [table, setTable] = useState("");
 
-  function loadHistory(overrides?: { from?: string; to?: string; table?: string }) {
+  async function loadHistory(overrides?: { from?: string; to?: string; table?: string }) {
     setLoading(true);
     const fromVal = overrides?.from ?? from;
     const toVal = overrides?.to ?? to;
@@ -26,13 +28,12 @@ export default function HistoryPage() {
     }
     if (tableVal) params.set("table", tableVal);
 
-    fetch(`/api/orders?${params}`)
-      .then((r) => r.json())
-      .then((data) => {
-        setOrders(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    const { items, error: loadError } = await fetchJsonArray<OrderWithItems>(
+      `/api/orders?${params}`
+    );
+    setOrders(items);
+    setError(loadError);
+    setLoading(false);
   }
 
   useEffect(() => {
@@ -111,6 +112,12 @@ export default function HistoryPage() {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       {loading ? (
         <p className="text-cafe-500">Loading…</p>

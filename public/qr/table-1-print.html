@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Table 1 QR</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: #faf6f1;
+    }
+    .card {
+      text-align: center;
+      padding: 48px;
+      border: 3px solid #5c3b2c;
+      border-radius: 24px;
+      background: white;
+    }
+    h1 { font-size: 48px; color: #5c3b2c; margin-bottom: 8px; }
+    p { color: #8a5639; margin-bottom: 24px; font-size: 18px; }
+    img { width: 280px; height: 280px; }
+    .url { margin-top: 20px; font-size: 12px; color: #aaa; word-break: break-all; max-width: 320px; }
+    @media print {
+      body { background: white; }
+      .card { border: 2px solid #000; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Table 1</h1>
+    <p>Scan to order</p>
+    <img src="./table-1.png" alt="QR code for table 1" />
+    <p class="url">https://teakuzz.vercel.app/order/1</p>
+  </div>
+</body>
+</html>

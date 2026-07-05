@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tables 1-7 QR Codes</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #faf6f1; padding: 24px; }
+    h1 { text-align: center; color: #5c3b2c; margin-bottom: 24px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .card {
+      text-align: center;
+      padding: 32px 24px;
+      border: 3px solid #5c3b2c;
+      border-radius: 20px;
+      background: white;
+      page-break-inside: avoid;
+    }
+    .card h2 { font-size: 36px; color: #5c3b2c; margin-bottom: 8px; }
+    .card p { color: #8a5639; margin-bottom: 16px; }
+    .card img { width: 200px; height: 200px; }
+    @media print {
+      body { background: white; padding: 0; }
+      .grid { display: block; }
+      .card {
+        border: 2px solid #000;
+        margin-bottom: 40px;
+        break-after: page;
+      }
+      .card:last-child { break-after: auto; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Teakuzz Cafe — Scan to Order</h1>
+  <div class="grid">
+    <div class="card">
+      <h2>Table 1</h2>
+      <p>Scan to order</p>
+      <img src="./table-1.png" alt="Table 1" />
+    </div>
+<div class="card">
+      <h2>Table 2</h2>
+      <p>Scan to order</p>
+      <img src="./table-2.png" alt="Table 2" />
+    </div>
+<div class="card">
+      <h2>Table 3</h2>
+      <p>Scan to order</p>
+      <img src="./table-3.png" alt="Table 3" />
+    </div>
+<div class="card">
+      <h2>Table 4</h2>
+      <p>Scan to order</p>
+      <img src="./table-4.png" alt="Table 4" />
+    </div>
+<div class="card">
+      <h2>Table 5</h2>
+      <p>Scan to order</p>
+      <img src="./table-5.png" alt="Table 5" />
+    </div>
+<div class="card">
+      <h2>Table 6</h2>
+      <p>Scan to order</p>
+      <img src="./table-6.png" alt="Table 6" />
+    </div>
+<div class="card">
+      <h2>Table 7</h2>
+      <p>Scan to order</p>
+      <img src="./table-7.png" alt="Table 7" />
+    </div>
+  </div>
+</body>
+</html>

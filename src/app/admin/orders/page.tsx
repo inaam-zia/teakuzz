@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatDateShort, formatPrice } from "@/lib/format";
+import { fetchJsonArray } from "@/lib/parse-api";
 import type { OrderStatus, OrderWithItems } from "@/lib/types";
 
 const statusLabels: Record<OrderStatus, string> = {
@@ -21,15 +22,15 @@ const statusColors: Record<OrderStatus, string> = {
 export default function LiveOrdersPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  function loadOrders() {
-    fetch("/api/orders?status=new")
-      .then((r) => r.json())
-      .then((data) => {
-        setOrders(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+  async function loadOrders() {
+    const { items, error: loadError } = await fetchJsonArray<OrderWithItems>(
+      "/api/orders?status=new"
+    );
+    setOrders(items);
+    setError(loadError);
+    setLoading(false);
   }
 
   useEffect(() => {
@@ -53,6 +54,12 @@ export default function LiveOrdersPage() {
         <h2 className="text-2xl font-bold text-cafe-900">Live orders</h2>
         <p className="text-cafe-600">New orders appear automatically every few seconds</p>
       </div>
+
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       {loading ? (
         <p className="text-cafe-500">Loading…</p>

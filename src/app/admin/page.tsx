@@ -3,17 +3,20 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { formatDateShort, formatPrice } from "@/lib/format";
+import { fetchJsonArray } from "@/lib/parse-api";
 import type { OrderWithItems } from "@/lib/types";
 
 export default function AdminDashboard() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    function load() {
-      fetch("/api/orders?status=new")
-        .then((r) => r.json())
-        .then(setOrders)
-        .catch(() => {});
+    async function load() {
+      const { items, error: loadError } = await fetchJsonArray<OrderWithItems>(
+        "/api/orders?status=new"
+      );
+      setOrders(items);
+      setError(loadError);
     }
     load();
     const interval = setInterval(load, 10000);
@@ -41,6 +44,12 @@ export default function AdminDashboard() {
           <p className="mt-1 font-semibold text-cafe-800">Past orders →</p>
         </Link>
       </div>
+
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       <section>
         <div className="mb-3 flex items-center justify-between">

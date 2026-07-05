@@ -22,12 +22,16 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
 
   useEffect(() => {
     fetch("/api/menu")
-      .then((r) => r.json())
-      .then((data) => {
+      .then(async (r) => {
+        const data = await r.json();
+        if (!r.ok || data.error) {
+          setError(data.error || "Could not load menu");
+          return;
+        }
         setCategories(data.categories || []);
         setItems((data.items || []).filter((i: MenuItem) => i.available));
       })
-      .catch(() => setError("Could not load menu"))
+      .catch(() => setError("Could not load menu — check your internet connection"))
       .finally(() => setLoading(false));
   }, []);
 
