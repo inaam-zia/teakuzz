@@ -84,7 +84,10 @@ export default function LiveOrdersPage() {
                     </span>
                   </div>
                   <p className="text-sm text-cafe-500">
-                    {order.customer_name || "Guest"} · {formatDateShort(order.created_at)}
+                    {order.customer_name || "Guest"}
+                    {order.customer_phone && ` · +91 ${order.customer_phone}`}
+                    {" · "}
+                    {formatDateShort(order.created_at)}
                   </p>
                 </div>
                 <p className="text-xl font-bold text-cafe-700">{formatPrice(order.total)}</p>

@@ -134,6 +134,9 @@ export default function HistoryPage() {
                     Table {order.table_number}
                     {order.customer_name && ` · ${order.customer_name}`}
                   </p>
+                  {order.customer_phone && (
+                    <p className="text-sm text-cafe-500">+91 {order.customer_phone}</p>
+                  )}
                   <p className="text-sm text-cafe-500">{formatDate(order.created_at)}</p>
                 </div>
                 <div className="text-right">

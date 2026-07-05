@@ -72,6 +72,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!body.customerName?.trim() || !body.customerPhone?.trim()) {
+      return NextResponse.json(
+        { error: "Name and phone number are required" },
+        { status: 400 }
+      );
+    }
+
     const menuIds = body.items.map((i) => i.menuItemId);
     const { data: menuItems, error: menuError } = await supabase
       .from("menu_items")
@@ -116,7 +123,8 @@ export async function POST(request: Request) {
       .from("orders")
       .insert({
         table_number: body.tableNumber,
-        customer_name: body.customerName?.trim() || null,
+        customer_name: body.customerName.trim(),
+        customer_phone: body.customerPhone.trim(),
         total,
         status: "new",
       })

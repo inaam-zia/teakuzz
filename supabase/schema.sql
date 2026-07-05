@@ -20,6 +20,7 @@ create table orders (
   id uuid primary key default gen_random_uuid(),
   table_number int not null,
   customer_name text,
+  customer_phone text,
   status text default 'new' check (status in ('new', 'preparing', 'served', 'cancelled')),
   total numeric(10, 2) not null,
   created_at timestamptz default now()
