@@ -38,6 +38,13 @@
     color: var(--brand-heading);
     font-size: var(--brand-font-size-heading);
   }
+
+  /* iOS Safari auto-zooms inputs below 16px — keep touch fields readable */
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1rem);
+  }
 }
 
 @layer components {
@@ -111,7 +118,8 @@
     @apply w-full rounded-2xl border px-4 py-3.5 outline-none transition focus:ring-4;
     border-color: var(--brand-border);
     background-color: color-mix(in srgb, var(--brand-bg) 50%, transparent);
-    font-size: var(--brand-font-size-base);
+    /* 16px minimum — prevents iOS Safari zoom on focus */
+    font-size: max(16px, var(--brand-font-size-base));
     color: var(--brand-text);
   }
 
@@ -187,6 +195,15 @@
     background-color: var(--brand-bg-top);
   }
 
+  .menu-image--pending {
+    @apply animate-pulse;
+    background-color: var(--brand-bg-top);
+  }
+
+  .menu-image--loaded {
+    @apply animate-none;
+  }
+
   .menu-price {
     @apply shrink-0 rounded-xl px-3 py-1.5 text-sm font-bold;
     background-color: var(--brand-bg-top);
@@ -208,7 +225,8 @@
     @apply w-full rounded-2xl border py-3 pl-10 pr-10 outline-none transition focus:ring-2;
     border-color: var(--brand-border);
     background-color: var(--brand-surface);
-    font-size: var(--brand-font-size-small);
+    /* 16px minimum — prevents iOS Safari zoom on focus */
+    font-size: 16px;
     color: var(--brand-text);
   }
 

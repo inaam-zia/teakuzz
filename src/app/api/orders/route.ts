@@ -11,6 +11,7 @@ import {
   validateTableAccess,
 } from "@/lib/table-session";
 import type { PlaceOrderPayload } from "@/lib/types";
+import { buildComboOrderName, getOfferById } from "@/lib/offers";
 
 export async function GET(request: Request) {
   if (!isAdminAuthenticated()) {
@@ -85,9 +86,12 @@ export async function POST(request: Request) {
     const supabase = createServerClient();
     const body: PlaceOrderPayload = await request.json();
 
-    if (!body.tableNumber || !body.items?.length) {
+    const menuPayload = body.items ?? [];
+    const offerPayload = body.offers ?? [];
+
+    if (!body.tableNumber || (!menuPayload.length && !offerPayload.length)) {
       return NextResponse.json(
-        { error: "Table number and items are required" },
+        { error: "Table number and at least one item or combo is required" },
         { status: 400 }
       );
     }
@@ -122,36 +126,60 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid phone number" }, { status: 400 });
     }
 
-    const menuIds = body.items.map((i) => i.menuItemId);
-    const { data: menuItems, error: menuError } = await supabase
-      .from("menu_items")
-      .select("*")
-      .in("id", menuIds)
-      .eq("available", true);
+    const orderLines: { item_name: string; item_price: number; quantity: number }[] = [];
 
-    if (menuError || !menuItems?.length) {
-      return NextResponse.json(
-        { error: "Could not load menu items" },
-        { status: 400 }
-      );
-    }
+    if (menuPayload.length) {
+      const menuIds = menuPayload.map((i) => i.menuItemId);
+      const { data: menuItems, error: menuError } = await supabase
+        .from("menu_items")
+        .select("*")
+        .in("id", menuIds)
+        .eq("available", true);
 
-    const menuMap = new Map(menuItems.map((m) => [m.id, m]));
-    const orderLines = body.items
-      .map((item) => {
+      if (menuError || !menuItems?.length) {
+        return NextResponse.json(
+          { error: "Could not load menu items" },
+          { status: 400 }
+        );
+      }
+
+      const menuMap = new Map(menuItems.map((m) => [m.id, m]));
+      for (const item of menuPayload) {
         const menuItem = menuMap.get(item.menuItemId);
-        if (!menuItem) return null;
-        return {
+        if (!menuItem) continue;
+        orderLines.push({
           item_name: menuItem.name,
           item_price: menuItem.price,
           quantity: item.quantity,
-        };
-      })
-      .filter(Boolean) as {
-      item_name: string;
-      item_price: number;
-      quantity: number;
-    }[];
+        });
+      }
+    }
+
+    for (const line of offerPayload) {
+      const offer = await getOfferById(line.offerId);
+      if (!offer || !offer.active || !offer.offer_items.length) {
+        return NextResponse.json(
+          { error: "One or more combo offers are unavailable" },
+          { status: 400 }
+        );
+      }
+
+      const unavailable = offer.offer_items.some(
+        (oi) => !oi.menu_item || !oi.menu_item.available
+      );
+      if (unavailable) {
+        return NextResponse.json(
+          { error: `Combo "${offer.name}" includes unavailable items` },
+          { status: 400 }
+        );
+      }
+
+      orderLines.push({
+        item_name: buildComboOrderName(offer),
+        item_price: offer.price,
+        quantity: line.quantity,
+      });
+    }
 
     if (!orderLines.length) {
       return NextResponse.json({ error: "No valid items in order" }, { status: 400 });

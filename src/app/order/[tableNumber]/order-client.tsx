@@ -5,9 +5,11 @@ import { formatPrice } from "@/lib/format";
 import { fetchMyActiveOrders, ORDER_STATUS_POLL_MS } from "@/lib/order-poll";
 import { normalizePhone, isValidPhone } from "@/lib/phone";
 import CafeBrandingBlock from "@/components/cafe-branding-block";
+import LazyMenuImage from "@/components/lazy-menu-image";
 import OrderStatusView from "./order-status-view";
+import { formatOfferIncludes } from "@/lib/offers";
 import type { CafeBranding } from "@/lib/branding-types";
-import type { CartItem, MenuCategory, MenuItem } from "@/lib/types";
+import type { CartItem, MenuCategory, MenuItem, Offer, OrderWithItems } from "@/lib/types";
 
 type SavedCustomer = {
   name: string;
@@ -22,14 +24,87 @@ type Props = {
 
 type Step = "menu" | "done";
 
+function newCartLineId() {
+  return `line-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function OfferCard({
+  offer,
+  quantity,
+  isBlocked,
+  onAdd,
+  onUpdateQty,
+}: {
+  offer: Offer;
+  quantity: number;
+  isBlocked: boolean;
+  onAdd: () => void;
+  onUpdateQty: (delta: number) => void;
+}) {
+  const includes = formatOfferIncludes(offer);
+
+  return (
+    <div
+      className={`menu-suggestion-card w-[11rem] ${quantity > 0 ? "menu-suggestion-card--in-cart" : ""}`}
+    >
+      {offer.image_url ? (
+        <LazyMenuImage src={offer.image_url} alt="" className="menu-suggestion-image" />
+      ) : (
+        <div className="menu-suggestion-placeholder text-lg font-bold text-cafe-500">%</div>
+      )}
+      <p className="line-clamp-2 text-sm font-semibold leading-tight text-cafe-900">
+        {offer.name}
+      </p>
+      <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-cafe-500">{includes}</p>
+      <div className="mt-2 flex items-center justify-between gap-1">
+        <span className="text-xs font-bold text-cafe-700">{formatPrice(offer.price)}</span>
+        {isBlocked ? (
+          <span className="text-[10px] font-semibold text-amber-700">Preparing</span>
+        ) : quantity > 0 ? (
+          <div className="qty-controls gap-1.5">
+            <button
+              type="button"
+              onClick={() => onUpdateQty(-1)}
+              className="qty-btn h-7 w-7 text-base"
+              aria-label={`Decrease ${offer.name} quantity`}
+            >
+              −
+            </button>
+            <span className="w-4 text-center text-xs font-semibold">{quantity}</span>
+            <button
+              type="button"
+              onClick={() => onUpdateQty(1)}
+              className="qty-btn qty-btn-plus h-7 w-7 text-base"
+              aria-label={`Increase ${offer.name} quantity`}
+            >
+              +
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onAdd}
+            className="qty-btn qty-btn-plus h-7 w-7 text-base"
+            aria-label={`Add ${offer.name}`}
+          >
+            +
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function MenuItemRow({
   item,
   quantity,
+  isPreparing,
   onAdd,
   onUpdateQty,
 }: {
   item: MenuItem;
   quantity: number;
+  isPreparing: boolean;
   onAdd: () => void;
   onUpdateQty: (delta: number) => void;
 }) {
@@ -37,19 +112,19 @@ function MenuItemRow({
     <div
       className={`menu-item-card ${quantity > 0 ? "menu-item-card--in-cart" : ""}`}
     >
-      {item.image_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={item.image_url} alt={item.name} className="menu-item-image" />
-      ) : null}
+      <LazyMenuImage src={item.image_url} alt={item.name} className="menu-item-image" />
       <div className="min-w-0 flex-1">
         <p className="font-semibold text-cafe-900">{item.name}</p>
         {item.description && (
           <p className="mt-1 text-sm leading-relaxed text-cafe-500">{item.description}</p>
         )}
+        {isPreparing && (
+          <p className="mt-1 text-xs font-semibold text-amber-700">Preparing your order</p>
+        )}
       </div>
       <div className="flex shrink-0 flex-col items-end justify-between gap-2 self-stretch">
         <span className="menu-price">{formatPrice(item.price)}</span>
-        {quantity > 0 ? (
+        {isPreparing ? null : quantity > 0 ? (
           <div className="qty-controls">
             <button
               type="button"
@@ -89,11 +164,13 @@ function MenuItemRow({
 function MenuSuggestionCard({
   item,
   quantity,
+  isPreparing,
   onAdd,
   onUpdateQty,
 }: {
   item: MenuItem;
   quantity: number;
+  isPreparing: boolean;
   onAdd: () => void;
   onUpdateQty: (delta: number) => void;
 }) {
@@ -102,8 +179,7 @@ function MenuSuggestionCard({
       className={`menu-suggestion-card ${quantity > 0 ? "menu-suggestion-card--in-cart" : ""}`}
     >
       {item.image_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={item.image_url} alt="" className="menu-suggestion-image" />
+        <LazyMenuImage src={item.image_url} alt="" className="menu-suggestion-image" />
       ) : (
         <div className="menu-suggestion-placeholder text-lg font-bold text-cafe-500">
           {item.name.charAt(0)}
@@ -114,7 +190,9 @@ function MenuSuggestionCard({
       </p>
       <div className="mt-2 flex items-center justify-between gap-1">
         <span className="text-xs font-bold text-cafe-700">{formatPrice(item.price)}</span>
-        {quantity > 0 ? (
+        {isPreparing ? (
+          <span className="text-[10px] font-semibold text-amber-700">Preparing</span>
+        ) : quantity > 0 ? (
           <div className="qty-controls gap-1.5">
             <button
               type="button"
@@ -155,6 +233,7 @@ function MenuCategorySection({
   expanded,
   onToggle,
   cartQtyById,
+  preparingItemIds,
   onAdd,
   onUpdateQty,
 }: {
@@ -163,6 +242,7 @@ function MenuCategorySection({
   expanded: boolean;
   onToggle: () => void;
   cartQtyById: Map<string, number>;
+  preparingItemIds: Set<string>;
   onAdd: (item: MenuItem) => void;
   onUpdateQty: (menuItemId: string, delta: number) => void;
 }) {
@@ -208,6 +288,7 @@ function MenuCategorySection({
               key={item.id}
               item={item}
               quantity={cartQtyById.get(item.id) ?? 0}
+              isPreparing={preparingItemIds.has(item.id)}
               onAdd={() => onAdd(item)}
               onUpdateQty={(delta) => onUpdateQty(item.id, delta)}
             />
@@ -232,9 +313,11 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
   const [showCart, setShowCart] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [hasActiveOrders, setHasActiveOrders] = useState(false);
+  const [activeOrders, setActiveOrders] = useState<OrderWithItems[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [suggestions, setSuggestions] = useState<MenuItem[]>([]);
+  const [offers, setOffers] = useState<Offer[]>([]);
   const [suggestionsSource, setSuggestionsSource] = useState<"feedback" | "sales" | "menu">("menu");
 
   const hasSavedDetails = Boolean(customerName.trim() && normalizePhone(customerPhone));
@@ -272,6 +355,13 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
         if (data.source) setSuggestionsSource(data.source);
       })
       .catch(() => {});
+
+    fetch("/api/offers")
+      .then((r) => r.json())
+      .then((data: { offers?: Offer[] }) => {
+        setOffers(data.offers ?? []);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -279,6 +369,7 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
 
     async function refreshActive() {
       const { orders } = await fetchMyActiveOrders(tableNumber);
+      setActiveOrders(orders);
       setHasActiveOrders(orders.length > 0);
     }
 
@@ -336,10 +427,39 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
   const cartQtyById = useMemo(() => {
     const map = new Map<string, number>();
     for (const line of cart) {
-      map.set(line.menuItemId, line.quantity);
+      if (line.kind === "menu" && line.menuItemId) {
+        map.set(line.menuItemId, (map.get(line.menuItemId) ?? 0) + line.quantity);
+      }
     }
     return map;
   }, [cart]);
+
+  const cartQtyByOfferId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const line of cart) {
+      if (line.kind === "offer" && line.offerId) {
+        map.set(line.offerId, line.quantity);
+      }
+    }
+    return map;
+  }, [cart]);
+
+  const preparingItemIds = useMemo(() => {
+    const preparingNames = new Set<string>();
+    for (const order of activeOrders) {
+      if (order.status !== "preparing") continue;
+      for (const line of order.order_items) {
+        preparingNames.add(line.item_name);
+      }
+    }
+    const ids = new Set<string>();
+    for (const item of items) {
+      if (preparingNames.has(item.name)) {
+        ids.add(item.id);
+      }
+    }
+    return ids;
+  }, [activeOrders, items]);
 
   const cartTotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
@@ -362,25 +482,82 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
   }
 
   function addToCart(item: MenuItem) {
+    if (preparingItemIds.has(item.id)) return;
     setCart((prev) => {
-      const existing = prev.find((c) => c.menuItemId === item.id);
+      const existing = prev.find((c) => c.kind === "menu" && c.menuItemId === item.id);
       if (existing) {
         return prev.map((c) =>
-          c.menuItemId === item.id ? { ...c, quantity: c.quantity + 1 } : c
+          c.kind === "menu" && c.menuItemId === item.id
+            ? { ...c, quantity: c.quantity + 1 }
+            : c
         );
       }
       return [
         ...prev,
-        { menuItemId: item.id, name: item.name, price: item.price, quantity: 1 },
+        {
+          lineId: newCartLineId(),
+          kind: "menu" as const,
+          menuItemId: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: 1,
+        },
       ];
     });
   }
 
+  function addOfferToCart(offer: Offer) {
+    if (offerBlocked(offer)) return;
+    setCart((prev) => {
+      const existing = prev.find((c) => c.kind === "offer" && c.offerId === offer.id);
+      if (existing) {
+        return prev.map((c) =>
+          c.kind === "offer" && c.offerId === offer.id
+            ? { ...c, quantity: c.quantity + 1 }
+            : c
+        );
+      }
+      return [
+        ...prev,
+        {
+          lineId: newCartLineId(),
+          kind: "offer" as const,
+          offerId: offer.id,
+          name: offer.name,
+          price: offer.price,
+          quantity: 1,
+          includes: formatOfferIncludes(offer),
+        },
+      ];
+    });
+  }
+
+  function offerBlocked(offer: Offer) {
+    return offer.offer_items.some((oi) => preparingItemIds.has(oi.menu_item_id));
+  }
+
   function updateQty(menuItemId: string, delta: number) {
+    if (delta > 0 && preparingItemIds.has(menuItemId)) return;
     setCart((prev) =>
       prev
         .map((c) =>
-          c.menuItemId === menuItemId ? { ...c, quantity: c.quantity + delta } : c
+          c.kind === "menu" && c.menuItemId === menuItemId
+            ? { ...c, quantity: c.quantity + delta }
+            : c
+        )
+        .filter((c) => c.quantity > 0)
+    );
+  }
+
+  function updateOfferQty(offerId: string, delta: number) {
+    const offer = offers.find((o) => o.id === offerId);
+    if (delta > 0 && offer && offerBlocked(offer)) return;
+    setCart((prev) =>
+      prev
+        .map((c) =>
+          c.kind === "offer" && c.offerId === offerId
+            ? { ...c, quantity: c.quantity + delta }
+            : c
         )
         .filter((c) => c.quantity > 0)
     );
@@ -431,7 +608,12 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
         tableNumber,
         customerName: name,
         customerPhone: phone,
-        items: cart.map((c) => ({ menuItemId: c.menuItemId, quantity: c.quantity })),
+        items: cart
+          .filter((c) => c.kind === "menu" && c.menuItemId)
+          .map((c) => ({ menuItemId: c.menuItemId!, quantity: c.quantity })),
+        offers: cart
+          .filter((c) => c.kind === "offer" && c.offerId)
+          .map((c) => ({ offerId: c.offerId!, quantity: c.quantity })),
       }),
     });
 
@@ -550,6 +732,31 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
         </p>
       ) : (
         <>
+          {!normalizedSearch && offers.length > 0 && (
+            <section className="px-5 py-4">
+              <div className="mb-3 space-y-1">
+                <h2 className="text-sm font-bold leading-tight text-cafe-900">
+                  Offers &amp; combos
+                </h2>
+                <p className="text-xs leading-snug text-cafe-500">
+                  Bundle deals — add a full combo in one tap
+                </p>
+              </div>
+              <div className="menu-suggestions">
+                {offers.map((offer) => (
+                  <OfferCard
+                    key={offer.id}
+                    offer={offer}
+                    quantity={cartQtyByOfferId.get(offer.id) ?? 0}
+                    isBlocked={offerBlocked(offer)}
+                    onAdd={() => addOfferToCart(offer)}
+                    onUpdateQty={(delta) => updateOfferQty(offer.id, delta)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
           {!normalizedSearch && suggestions.length > 0 && (
             <section className="px-5 py-4">
               <div className="mb-3 space-y-1">
@@ -574,6 +781,7 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
                     key={item.id}
                     item={item}
                     quantity={cartQtyById.get(item.id) ?? 0}
+                    isPreparing={preparingItemIds.has(item.id)}
                     onAdd={() => addToCart(item)}
                     onUpdateQty={(delta) => updateQty(item.id, delta)}
                   />
@@ -594,6 +802,7 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
                 expanded={isCategoryExpanded(cat.id)}
                 onToggle={() => toggleCategory(cat.id)}
                 cartQtyById={cartQtyById}
+                preparingItemIds={preparingItemIds}
                 onAdd={addToCart}
                 onUpdateQty={updateQty}
               />
@@ -607,6 +816,7 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
               expanded={isCategoryExpanded("other")}
               onToggle={() => toggleCategory("other")}
               cartQtyById={cartQtyById}
+              preparingItemIds={preparingItemIds}
               onAdd={addToCart}
               onUpdateQty={updateQty}
             />
@@ -645,15 +855,24 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
 
               <div className="space-y-2">
                 {cart.map((item) => (
-                  <div key={item.menuItemId} className="cart-line">
+                  <div key={item.lineId} className="cart-line">
                     <div>
                       <p className="font-medium text-cafe-900">{item.name}</p>
+                      {item.includes ? (
+                        <p className="text-xs text-cafe-500">{item.includes}</p>
+                      ) : null}
                       <p className="text-sm text-cafe-500">{formatPrice(item.price)}</p>
                     </div>
                     <div className="qty-controls">
                       <button
                         type="button"
-                        onClick={() => updateQty(item.menuItemId, -1)}
+                        onClick={() =>
+                          item.kind === "offer" && item.offerId
+                            ? updateOfferQty(item.offerId, -1)
+                            : item.menuItemId
+                              ? updateQty(item.menuItemId, -1)
+                              : undefined
+                        }
                         className="qty-btn"
                         aria-label="Decrease quantity"
                       >
@@ -662,7 +881,13 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
                       <span className="w-5 text-center font-semibold">{item.quantity}</span>
                       <button
                         type="button"
-                        onClick={() => updateQty(item.menuItemId, 1)}
+                        onClick={() =>
+                          item.kind === "offer" && item.offerId
+                            ? updateOfferQty(item.offerId, 1)
+                            : item.menuItemId
+                              ? updateQty(item.menuItemId, 1)
+                              : undefined
+                        }
                         className="qty-btn qty-btn-plus"
                         aria-label="Increase quantity"
                       >

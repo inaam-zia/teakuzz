@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { CSSProperties } from "react";
 import { DM_Sans, Inter, Poppins, Lora } from "next/font/google";
 import "./globals.css";
@@ -7,6 +7,12 @@ import { getBranding } from "@/lib/branding";
 import { themeToCssVars } from "@/lib/branding-types";
 
 export const dynamic = "force-dynamic";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans" });
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });

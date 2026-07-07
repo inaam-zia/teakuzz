@@ -189,7 +189,7 @@ function DishFeedbackForm({
           onChange={(e) => setComment(e.target.value)}
           placeholder="Optional comment…"
           rows={2}
-          className="order-input mt-2 min-h-[60px] text-sm"
+          className="order-input mt-2 min-h-[60px]"
           disabled={submitting}
         />
         {error && <p className="mt-2 text-xs text-red-600">{error}</p>}

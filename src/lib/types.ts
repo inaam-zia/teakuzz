@@ -49,10 +49,35 @@ export type OrderWithItems = Order & {
 };
 
 export type CartItem = {
-  menuItemId: string;
+  lineId: string;
+  kind: "menu" | "offer";
+  menuItemId?: string;
+  offerId?: string;
   name: string;
   price: number;
   quantity: number;
+  /** Human-readable combo contents for cart display */
+  includes?: string;
+};
+
+export type OfferItem = {
+  id: string;
+  offer_id: string;
+  menu_item_id: string;
+  quantity: number;
+  menu_item?: Pick<MenuItem, "id" | "name" | "price" | "available" | "image_url">;
+};
+
+export type Offer = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  image_url: string | null;
+  active: boolean;
+  sort_order: number;
+  created_at: string;
+  offer_items: OfferItem[];
 };
 
 export type PlaceOrderPayload = {
@@ -60,4 +85,5 @@ export type PlaceOrderPayload = {
   customerName: string;
   customerPhone: string;
   items: { menuItemId: string; quantity: number }[];
+  offers?: { offerId: string; quantity: number }[];
 };
