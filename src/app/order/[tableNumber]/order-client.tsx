@@ -21,20 +21,20 @@ type Props = {
 
 type Step = "menu" | "done";
 
-function MenuItemButton({
+function MenuItemRow({
   item,
   quantity,
   onAdd,
+  onUpdateQty,
 }: {
   item: MenuItem;
   quantity: number;
   onAdd: () => void;
+  onUpdateQty: (delta: number) => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onAdd}
-      className={`menu-item-card group ${quantity > 0 ? "menu-item-card--in-cart" : ""}`}
+    <div
+      className={`menu-item-card ${quantity > 0 ? "menu-item-card--in-cart" : ""}`}
     >
       {item.image_url ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -46,15 +46,42 @@ function MenuItemButton({
           <p className="mt-1 text-sm leading-relaxed text-cafe-500">{item.description}</p>
         )}
       </div>
-      <div className="flex shrink-0 flex-col items-end gap-1.5">
+      <div className="flex shrink-0 flex-col items-end justify-between gap-2 self-stretch">
         <span className="menu-price">{formatPrice(item.price)}</span>
         {quantity > 0 ? (
-          <span className="menu-item-qty-badge" aria-label={`${quantity} in cart`}>
-            ×{quantity}
-          </span>
-        ) : null}
+          <div className="qty-controls">
+            <button
+              type="button"
+              onClick={() => onUpdateQty(-1)}
+              className="qty-btn"
+              aria-label={`Decrease ${item.name} quantity`}
+            >
+              −
+            </button>
+            <span className="w-5 text-center text-sm font-semibold text-cafe-900">
+              {quantity}
+            </span>
+            <button
+              type="button"
+              onClick={() => onUpdateQty(1)}
+              className="qty-btn qty-btn-plus"
+              aria-label={`Increase ${item.name} quantity`}
+            >
+              +
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onAdd}
+            className="qty-btn qty-btn-plus"
+            aria-label={`Add ${item.name}`}
+          >
+            +
+          </button>
+        )}
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -284,7 +311,7 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
       <header className="order-header sticky top-0 z-10 px-5 py-5">
         <CafeBrandingBlock branding={branding} logoSize="md" showTagline />
         <p className="mt-2 text-sm font-semibold text-brand-heading">Table {tableNumber}</p>
-        <p className="mt-0.5 text-xs text-brand-subtle">Tap items to add to your order</p>
+        <p className="mt-0.5 text-xs text-brand-subtle">Use + to add items to your order</p>
         {hasSavedDetails && (
           <p className="mt-1 text-xs text-brand-subtle">
             Ordering as <strong className="text-brand-muted">{customerName}</strong>
@@ -356,11 +383,12 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
                 <h2 className="order-category">{cat.name}</h2>
                 <div className="space-y-3">
                   {catItems.map((item) => (
-                    <MenuItemButton
+                    <MenuItemRow
                       key={item.id}
                       item={item}
                       quantity={cartQtyById.get(item.id) ?? 0}
                       onAdd={() => addToCart(item)}
+                      onUpdateQty={(delta) => updateQty(item.id, delta)}
                     />
                   ))}
                 </div>
@@ -373,11 +401,12 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
               <h2 className="order-category">Other</h2>
               <div className="space-y-3">
                 {visibleItemsByCategory.get("other")!.map((item) => (
-                  <MenuItemButton
+                  <MenuItemRow
                     key={item.id}
                     item={item}
                     quantity={cartQtyById.get(item.id) ?? 0}
                     onAdd={() => addToCart(item)}
+                    onUpdateQty={(delta) => updateQty(item.id, delta)}
                   />
                 ))}
               </div>
