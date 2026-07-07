@@ -14,6 +14,13 @@ export type MenuItem = {
   created_at: string;
 };
 
+export type CafeTable = {
+  id: string;
+  table_number: number;
+  enabled: boolean;
+  created_at: string;
+};
+
 export type OrderStatus = "new" | "preparing" | "served" | "cancelled";
 
 export type Order = {

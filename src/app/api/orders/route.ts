@@ -5,6 +5,7 @@ import { formatSupabaseError } from "@/lib/supabase-errors";
 import { insertOrder } from "@/lib/insert-order";
 import { isAdminAuthenticated, getRecentOrderCookieConfig } from "@/lib/auth";
 import { normalizeEmail, isValidEmail } from "@/lib/email";
+import { isTableOrderable } from "@/lib/table-access";
 import type { PlaceOrderPayload } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -78,6 +79,15 @@ export async function POST(request: Request) {
         { error: "Table number and items are required" },
         { status: 400 }
       );
+    }
+
+    const tableAccess = await isTableOrderable(body.tableNumber);
+    if (!tableAccess.ok) {
+      const message =
+        tableAccess.reason === "disabled"
+          ? "This table is currently unavailable"
+          : "This table is not set up for ordering";
+      return NextResponse.json({ error: message }, { status: 400 });
     }
 
     if (!body.customerName?.trim()) {

@@ -27,7 +27,7 @@ export default function HomePage() {
         </Link>
 
         <Link href="/admin/login" className="btn-secondary w-full">
-          Staff login
+          Admin login
         </Link>
       </div>
     </main>

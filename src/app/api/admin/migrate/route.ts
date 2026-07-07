@@ -17,6 +17,16 @@ create table if not exists otp_verifications (
   created_at timestamptz default now()
 );
 create index if not exists otp_verifications_phone_idx on otp_verifications (phone, created_at desc);
+create table if not exists cafe_tables (
+  id uuid primary key default gen_random_uuid(),
+  table_number int not null unique,
+  enabled boolean default true,
+  created_at timestamptz default now()
+);
+create index if not exists cafe_tables_number_idx on cafe_tables (table_number);
+insert into cafe_tables (table_number, enabled)
+select v.n, true from generate_series(1, 7) as v(n)
+where not exists (select 1 from cafe_tables);
 `.trim();
 
 export async function POST() {
@@ -64,6 +74,7 @@ export async function GET() {
     const { error: phoneError } = await supabase.from("orders").select("customer_phone").limit(1);
     const { error: emailError } = await supabase.from("orders").select("customer_email").limit(1);
     const { error: otpError } = await supabase.from("otp_verifications").select("id").limit(1);
+    const { error: tablesError } = await supabase.from("cafe_tables").select("id").limit(1);
 
     const needsMigration =
       (!!phoneError &&
@@ -74,7 +85,10 @@ export async function GET() {
           emailError.message.includes("schema cache"))) ||
       (!!otpError &&
         (otpError.message.includes("otp_verifications") ||
-          otpError.message.includes("schema cache")));
+          otpError.message.includes("schema cache"))) ||
+      (!!tablesError &&
+        (tablesError.message.includes("cafe_tables") ||
+          tablesError.message.includes("schema cache")));
 
     return NextResponse.json({ needsMigration, sql: MIGRATION_SQL });
   } catch {

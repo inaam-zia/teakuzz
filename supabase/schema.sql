@@ -56,6 +56,15 @@ create table if not exists otp_verifications (
 
 create index if not exists otp_verifications_phone_idx on otp_verifications (phone, created_at desc);
 
+create table if not exists cafe_tables (
+  id uuid primary key default gen_random_uuid(),
+  table_number int not null unique,
+  enabled boolean default true,
+  created_at timestamptz default now()
+);
+
+create index if not exists cafe_tables_number_idx on cafe_tables (table_number);
+
 -- Sample menu (skip if you already have items)
 insert into menu_categories (name, sort_order)
 select v.name, v.sort_order

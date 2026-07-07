@@ -30,7 +30,7 @@ export default function AdminDashboard() {
         <p className="text-cafe-600">Overview of your cafe</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="card">
           <p className="text-sm text-cafe-500">New orders</p>
           <p className="mt-1 text-3xl font-bold text-cafe-900">{orders.length}</p>
@@ -42,6 +42,10 @@ export default function AdminDashboard() {
         <Link href="/admin/history" className="card transition hover:border-cafe-400">
           <p className="text-sm text-cafe-500">History</p>
           <p className="mt-1 font-semibold text-cafe-800">Past orders →</p>
+        </Link>
+        <Link href="/admin/tables" className="card transition hover:border-cafe-400">
+          <p className="text-sm text-cafe-500">Table QR</p>
+          <p className="mt-1 font-semibold text-cafe-800">Manage codes →</p>
         </Link>
       </div>
 
@@ -83,15 +87,17 @@ export default function AdminDashboard() {
       </section>
 
       <section className="card">
-        <h3 className="font-bold text-cafe-900">QR codes for tables</h3>
-        <p className="mt-2 text-sm text-cafe-600">
-          Print a QR code for each table pointing to your site URL + table number.
-          Example: <code className="rounded bg-cafe-100 px-1">/order/1</code>,{" "}
-          <code className="rounded bg-cafe-100 px-1">/order/2</code>, etc.
-        </p>
-        <p className="mt-2 text-sm text-cafe-500">
-          Use a free QR generator (qr-code-generator.com) with your deployed URL.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="font-bold text-cafe-900">Table QR codes</h3>
+            <p className="mt-2 text-sm text-cafe-600">
+              Add, remove, or disable QR codes for each table. Print them and place on tables.
+            </p>
+          </div>
+          <Link href="/admin/tables" className="btn-primary shrink-0">
+            Manage QR codes →
+          </Link>
+        </div>
       </section>
     </div>
   );

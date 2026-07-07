@@ -34,7 +34,7 @@ export default function AdminLoginPage() {
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4">
       <div className="card space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-cafe-900">Staff login</h1>
+          <h1 className="text-2xl font-bold text-cafe-900">Admin login</h1>
           <p className="mt-1 text-sm text-cafe-600">
             Manage menu and orders from your browser.
           </p>
