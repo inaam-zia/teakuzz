@@ -208,30 +208,23 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
   return (
     <main className="order-bg mx-auto min-h-screen max-w-lg pb-28">
       <header className="order-header sticky top-0 z-10 px-5 py-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <CafeBrandingBlock branding={branding} logoSize="md" showTagline />
-            <p className="mt-2 text-sm font-semibold text-brand-heading">Table {tableNumber}</p>
-            <p className="mt-0.5 text-xs text-brand-subtle">Tap items to add to your order</p>
-            {hasSavedDetails && (
-              <p className="mt-1 text-xs text-brand-subtle">
-                Ordering as <strong className="text-brand-muted">{customerName}</strong>
-              </p>
-            )}
-            {hasActiveOrders && step === "menu" && (
-              <button
-                type="button"
-                onClick={viewOrderStatus}
-                className="mt-2 text-xs font-semibold text-[var(--brand-primary)] underline-offset-2 hover:underline"
-              >
-                View order status →
-              </button>
-            )}
-          </div>
-          <span className="table-badge-sm" aria-label={`${cartCount} items in cart`}>
-            {cartCount}
-          </span>
-        </div>
+        <CafeBrandingBlock branding={branding} logoSize="md" showTagline />
+        <p className="mt-2 text-sm font-semibold text-brand-heading">Table {tableNumber}</p>
+        <p className="mt-0.5 text-xs text-brand-subtle">Tap items to add to your order</p>
+        {hasSavedDetails && (
+          <p className="mt-1 text-xs text-brand-subtle">
+            Ordering as <strong className="text-brand-muted">{customerName}</strong>
+          </p>
+        )}
+        {hasActiveOrders && step === "menu" && (
+          <button
+            type="button"
+            onClick={viewOrderStatus}
+            className="mt-2 text-xs font-semibold text-[var(--brand-primary)] underline-offset-2 hover:underline"
+          >
+            View order status →
+          </button>
+        )}
       </header>
 
       {loading ? (
