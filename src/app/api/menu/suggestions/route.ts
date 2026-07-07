@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { hasSalesData, rankItemsBySales } from "@/lib/menu-suggestions";
+import { aggregateFeedback, rankMenuSuggestions } from "@/lib/menu-suggestions";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/supabase-errors";
 import type { MenuItem } from "@/lib/types";
 
 const SUGGESTION_LIMIT = 6;
 const SALES_LOOKBACK_DAYS = 30;
+const FEEDBACK_LOOKBACK_DAYS = 90;
 
 export async function GET() {
   if (!isSupabaseConfigured()) {
@@ -30,26 +31,47 @@ export async function GET() {
       return NextResponse.json({ suggestions: [], source: "menu" as const });
     }
 
-    const from = new Date();
-    from.setDate(from.getDate() - (SALES_LOOKBACK_DAYS - 1));
-    from.setHours(0, 0, 0, 0);
+    const salesFrom = new Date();
+    salesFrom.setDate(salesFrom.getDate() - (SALES_LOOKBACK_DAYS - 1));
+    salesFrom.setHours(0, 0, 0, 0);
 
-    const { data: orders, error: ordersError } = await supabase
-      .from("orders")
-      .select("id, order_items(item_name, quantity)")
-      .neq("status", "cancelled")
-      .gte("created_at", from.toISOString())
-      .limit(3000);
+    const feedbackFrom = new Date();
+    feedbackFrom.setDate(feedbackFrom.getDate() - (FEEDBACK_LOOKBACK_DAYS - 1));
+    feedbackFrom.setHours(0, 0, 0, 0);
 
-    if (ordersError) {
-      return NextResponse.json({ error: formatSupabaseError(ordersError) }, { status: 500 });
+    const [ordersResult, feedbackResult] = await Promise.all([
+      supabase
+        .from("orders")
+        .select("id, order_items(item_name, quantity)")
+        .neq("status", "cancelled")
+        .gte("created_at", salesFrom.toISOString())
+        .limit(3000),
+      supabase
+        .from("dish_feedback")
+        .select("item_name, rating")
+        .gte("created_at", feedbackFrom.toISOString())
+        .limit(5000),
+    ]);
+
+    if (ordersResult.error) {
+      return NextResponse.json({ error: formatSupabaseError(ordersResult.error) }, { status: 500 });
     }
 
-    const orderList = orders ?? [];
-    const suggestions = rankItemsBySales(available, orderList, SUGGESTION_LIMIT);
-    const source = hasSalesData(orderList) ? ("sales" as const) : ("menu" as const);
+    const orderList = ordersResult.data ?? [];
+    let feedbackAgg = aggregateFeedback([]);
 
-    return NextResponse.json({ suggestions, source });
+    if (!feedbackResult.error) {
+      feedbackAgg = aggregateFeedback(feedbackResult.data ?? []);
+    }
+
+    const { items, source } = rankMenuSuggestions(
+      available,
+      feedbackAgg,
+      orderList,
+      SUGGESTION_LIMIT
+    );
+
+    return NextResponse.json({ suggestions: items, source });
   } catch (err) {
     return NextResponse.json({ error: formatSupabaseError(err) }, { status: 500 });
   }

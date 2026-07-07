@@ -232,9 +232,9 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
   const [showCheckout, setShowCheckout] = useState(false);
   const [hasActiveOrders, setHasActiveOrders] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [suggestions, setSuggestions] = useState<MenuItem[]>([]);
-  const [suggestionsSource, setSuggestionsSource] = useState<"sales" | "menu">("menu");
+  const [suggestionsSource, setSuggestionsSource] = useState<"feedback" | "sales" | "menu">("menu");
 
   const hasSavedDetails = Boolean(customerName.trim() && normalizePhone(customerPhone));
 
@@ -266,7 +266,7 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
   useEffect(() => {
     fetch("/api/menu/suggestions")
       .then((r) => r.json())
-      .then((data: { suggestions?: MenuItem[]; source?: "sales" | "menu" }) => {
+      .then((data: { suggestions?: MenuItem[]; source?: "feedback" | "sales" | "menu" }) => {
         setSuggestions((data.suggestions ?? []).filter((i) => i.available));
         if (data.source) setSuggestionsSource(data.source);
       })
@@ -333,11 +333,11 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
 
   function isCategoryExpanded(categoryKey: string): boolean {
     if (normalizedSearch) return true;
-    return !collapsedCategories.has(categoryKey);
+    return expandedCategories.has(categoryKey);
   }
 
   function toggleCategory(categoryKey: string) {
-    setCollapsedCategories((prev) => {
+    setExpandedCategories((prev) => {
       const next = new Set(prev);
       if (next.has(categoryKey)) {
         next.delete(categoryKey);
@@ -542,12 +542,18 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
               <div className="mb-3 flex items-baseline justify-between gap-2">
                 <div>
                   <h2 className="text-sm font-bold text-cafe-900">
-                    {suggestionsSource === "sales" ? "Popular picks" : "Suggested for you"}
+                    {suggestionsSource === "feedback"
+                      ? "Top rated"
+                      : suggestionsSource === "sales"
+                        ? "Popular picks"
+                        : "Suggested for you"}
                   </h2>
                   <p className="text-xs text-cafe-500">
-                    {suggestionsSource === "sales"
-                      ? "Guest favourites — add in one tap"
-                      : "Great choices to start your order"}
+                    {suggestionsSource === "feedback"
+                      ? "Loved by guests — add in one tap"
+                      : suggestionsSource === "sales"
+                        ? "Guest favourites — add in one tap"
+                        : "Great choices to start your order"}
                   </p>
                 </div>
               </div>
