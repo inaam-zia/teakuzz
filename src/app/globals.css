@@ -218,7 +218,9 @@
   }
 
   .menu-suggestions {
-    @apply -mx-5 flex gap-3 overflow-x-auto px-5 pb-1 pt-1;
+    @apply flex gap-3 overflow-x-auto;
+    margin-right: -1.25rem;
+    padding-right: 1.25rem;
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
   }

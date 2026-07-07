@@ -551,24 +551,22 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
       ) : (
         <>
           {!normalizedSearch && suggestions.length > 0 && (
-            <section className="px-5 pb-2 pt-1">
-              <div className="mb-3 flex items-baseline justify-between gap-2">
-                <div>
-                  <h2 className="text-sm font-bold text-cafe-900">
-                    {suggestionsSource === "feedback"
-                      ? "Top rated"
-                      : suggestionsSource === "sales"
-                        ? "Popular picks"
-                        : "Suggested for you"}
-                  </h2>
-                  <p className="text-xs text-cafe-500">
-                    {suggestionsSource === "feedback"
-                      ? "Loved by guests — add in one tap"
-                      : suggestionsSource === "sales"
-                        ? "Guest favourites — add in one tap"
-                        : "Great choices to start your order"}
-                  </p>
-                </div>
+            <section className="px-5 py-4">
+              <div className="mb-3 space-y-1">
+                <h2 className="text-sm font-bold leading-tight text-cafe-900">
+                  {suggestionsSource === "feedback"
+                    ? "Top rated"
+                    : suggestionsSource === "sales"
+                      ? "Popular picks"
+                      : "Suggested for you"}
+                </h2>
+                <p className="text-xs leading-snug text-cafe-500">
+                  {suggestionsSource === "feedback"
+                    ? "Loved by guests — add in one tap"
+                    : suggestionsSource === "sales"
+                      ? "Guest favourites — add in one tap"
+                      : "Great choices to start your order"}
+                </p>
               </div>
               <div className="menu-suggestions">
                 {suggestions.map((item) => (
@@ -584,7 +582,7 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
             </section>
           )}
 
-          <div className="space-y-7 px-5 py-2">
+          <div className="space-y-7 px-5 pt-2 pb-2">
           {categories.map((cat) => {
             const catItems = visibleItemsByCategory.get(cat.id);
             if (!catItems?.length) return null;
