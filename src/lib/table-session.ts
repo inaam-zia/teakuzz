@@ -4,7 +4,9 @@ import { createServerClient, isSupabaseConfigured } from "@/lib/supabase";
 
 const TABLE_ACCESS_COOKIE = "cafe_table_access";
 const TABLE_CUSTOMER_COOKIE = "cafe_table_customer";
+const TABLE_ORDERS_COOKIE = "cafe_table_orders";
 const ACCESS_HOURS = 8;
+const MAX_TRACKED_ORDERS = 20;
 
 export type TableSessionPayload = {
   tableNumber: number;
@@ -17,6 +19,14 @@ export type TableCustomerPayload = {
   sessionId: string;
   name: string;
   phone: string;
+  exp: number;
+};
+
+/** Order IDs placed on this device for the current table visit */
+export type TableOrdersPayload = {
+  tableNumber: number;
+  sessionId: string | null;
+  orderIds: string[];
   exp: number;
 };
 
@@ -154,6 +164,83 @@ export function getTableCustomerLogoutCookieConfig() {
     path: "/",
     maxAge: 0,
   };
+}
+
+export function getTableOrdersFromCookie(): TableOrdersPayload | null {
+  const token = cookies().get(TABLE_ORDERS_COOKIE)?.value;
+  if (!token) return null;
+  const payload = decodeToken<TableOrdersPayload>(token);
+  if (!payload || !Array.isArray(payload.orderIds)) return null;
+  return payload;
+}
+
+export function getTableOrdersCookieConfig(
+  tableNumber: number,
+  sessionId: string | null,
+  orderIds: string[]
+) {
+  const uniqueIds = Array.from(new Set(orderIds)).slice(-MAX_TRACKED_ORDERS);
+  return {
+    name: TABLE_ORDERS_COOKIE,
+    value: encodeToken({
+      tableNumber,
+      sessionId,
+      orderIds: uniqueIds,
+      exp: Date.now() + ACCESS_HOURS * 60 * 60 * 1000,
+    }),
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: 60 * 60 * ACCESS_HOURS,
+  };
+}
+
+export function getTableOrdersLogoutCookieConfig() {
+  return {
+    name: TABLE_ORDERS_COOKIE,
+    value: "",
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: 0,
+  };
+}
+
+export function appendOrderToTableOrdersCookie(
+  tableNumber: number,
+  sessionId: string | null | undefined,
+  orderId: string
+) {
+  const normalizedSessionId = sessionId ?? null;
+  const existing = getTableOrdersFromCookie();
+
+  let orderIds: string[];
+  if (
+    existing &&
+    existing.tableNumber === tableNumber &&
+    existing.sessionId === normalizedSessionId
+  ) {
+    orderIds = existing.orderIds.includes(orderId)
+      ? existing.orderIds
+      : [...existing.orderIds, orderId];
+  } else {
+    orderIds = [orderId];
+  }
+
+  return getTableOrdersCookieConfig(tableNumber, normalizedSessionId, orderIds);
+}
+
+export function getDeviceOrderIdsForTable(
+  tableNumber: number,
+  sessionId: string | null | undefined
+): string[] {
+  const normalizedSessionId = sessionId ?? null;
+  const orders = getTableOrdersFromCookie();
+  if (!orders || orders.tableNumber !== tableNumber) return [];
+  if (orders.sessionId !== normalizedSessionId) return [];
+  return orders.orderIds;
 }
 
 export async function validateTableAccess(tableNumber: number): Promise<{

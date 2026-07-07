@@ -5,6 +5,7 @@ import {
   getTableAccessFromCookie,
   getTableCustomerFromCookie,
   getTableCustomerLogoutCookieConfig,
+  getTableOrdersLogoutCookieConfig,
   getTableSessionFromDb,
 } from "@/lib/table-session";
 import { isTableOrderable } from "@/lib/table-access";
@@ -38,6 +39,10 @@ export async function GET(request: Request, { params }: RouteContext) {
 
     if (customer && (sessionChanged || customer.sessionId !== dbSession.sessionId)) {
       cookies().set(getTableCustomerLogoutCookieConfig());
+    }
+
+    if (sessionChanged) {
+      cookies().set(getTableOrdersLogoutCookieConfig());
     }
   }
 

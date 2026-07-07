@@ -6,6 +6,7 @@ import { insertOrder } from "@/lib/insert-order";
 import { isAdminAuthenticated, getRecentOrderCookieConfig } from "@/lib/auth";
 import { isTableOrderable } from "@/lib/table-access";
 import {
+  appendOrderToTableOrdersCookie,
   getTableCustomerCookieConfig,
   validateTableAccess,
 } from "@/lib/table-session";
@@ -181,6 +182,13 @@ export async function POST(request: Request) {
     }
 
     cookies().set(getRecentOrderCookieConfig(order.id));
+    cookies().set(
+      appendOrderToTableOrdersCookie(
+        body.tableNumber,
+        sessionCheck.sessionId,
+        order.id
+      )
+    );
 
     if (sessionCheck.sessionId) {
       cookies().set(

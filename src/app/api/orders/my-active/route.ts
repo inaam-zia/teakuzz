@@ -1,15 +1,10 @@
 import { NextResponse } from "next/server";
-import { getRecentOrderId } from "@/lib/auth";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/supabase-errors";
-import {
-  getTableAccessFromCookie,
-  getTableCustomerFromCookie,
-  validateTableAccess,
-} from "@/lib/table-session";
+import { getDeviceOrderIdsForTable, validateTableAccess } from "@/lib/table-session";
 import type { OrderWithItems } from "@/lib/types";
 
-/** Customer-facing: live orders for this device / table visit */
+/** Customer-facing: active orders placed on this device only */
 export async function GET(request: Request) {
   if (!isSupabaseConfigured()) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
@@ -27,34 +22,26 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Please scan the table QR" }, { status: 403 });
   }
 
+  const orderIds = getDeviceOrderIdsForTable(
+    tableNumber,
+    sessionCheck.sessionsEnabled ? sessionCheck.sessionId : null
+  );
+
+  if (!orderIds.length) {
+    return NextResponse.json({ orders: [] });
+  }
+
   try {
     const supabase = createServerClient();
-    const customer = getTableCustomerFromCookie();
-    const recentId = getRecentOrderId();
-    const access = getTableAccessFromCookie();
 
-    let query = supabase
+    const { data, error } = await supabase
       .from("orders")
       .select("*, order_items(*)")
       .eq("table_number", tableNumber)
+      .in("id", orderIds)
       .in("status", ["new", "preparing", "served"])
       .order("created_at", { ascending: false })
       .limit(10);
-
-    // Prefer orders from this customer when we know their phone
-    if (
-      customer &&
-      customer.tableNumber === tableNumber &&
-      customer.sessionId === access?.sessionId
-    ) {
-      query = query.eq("customer_phone", customer.phone);
-    } else if (recentId) {
-      query = query.eq("id", recentId);
-    } else {
-      return NextResponse.json({ orders: [] });
-    }
-
-    const { data, error } = await query;
 
     if (error) {
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 500 });
