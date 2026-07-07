@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatPrice } from "@/lib/format";
 import { fetchMyActiveOrders, ORDER_STATUS_POLL_MS } from "@/lib/order-poll";
 import { normalizePhone, isValidPhone } from "@/lib/phone";
@@ -20,6 +20,7 @@ type Props = {
   tableNumber: number;
   branding: CafeBranding;
   savedCustomer?: SavedCustomer | null;
+  initialOffers?: Offer[];
 };
 
 type Step = "menu" | "done";
@@ -299,7 +300,12 @@ function MenuCategorySection({
   );
 }
 
-export default function OrderClient({ tableNumber, branding, savedCustomer }: Props) {
+export default function OrderClient({
+  tableNumber,
+  branding,
+  savedCustomer,
+  initialOffers = [],
+}: Props) {
   const [step, setStep] = useState<Step>("menu");
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
@@ -317,8 +323,9 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [suggestions, setSuggestions] = useState<MenuItem[]>([]);
-  const [offers, setOffers] = useState<Offer[]>([]);
+  const [offers, setOffers] = useState<Offer[]>(initialOffers);
   const [suggestionsSource, setSuggestionsSource] = useState<"feedback" | "sales" | "menu">("menu");
+  const scrollMenuToTopRef = useRef(false);
 
   const hasSavedDetails = Boolean(customerName.trim() && normalizePhone(customerPhone));
 
@@ -356,10 +363,10 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
       })
       .catch(() => {});
 
-    fetch("/api/offers")
+    fetch("/api/offers", { cache: "no-store" })
       .then((r) => r.json())
       .then((data: { offers?: Offer[] }) => {
-        setOffers(data.offers ?? []);
+        if (data.offers) setOffers(data.offers);
       })
       .catch(() => {});
   }, []);
@@ -383,6 +390,12 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
     const interval = setInterval(tick, ORDER_STATUS_POLL_MS);
     return () => clearInterval(interval);
   }, [tableNumber, step]);
+
+  useEffect(() => {
+    if (step !== "menu" || !scrollMenuToTopRef.current) return;
+    scrollMenuToTopRef.current = false;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [step]);
 
   const itemsByCategory = useMemo(() => {
     const grouped = new Map<string, MenuItem[]>();
@@ -640,7 +653,9 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
   }
 
   function orderAgain() {
+    scrollMenuToTopRef.current = true;
     setStep("menu");
+    setSearchQuery("");
     setCart([]);
     setError("");
     setCheckoutError("");
@@ -722,6 +737,31 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
         )}
       </header>
 
+      {!normalizedSearch && offers.length > 0 && (
+        <section className="px-5 py-4">
+          <div className="mb-3 space-y-1">
+            <h2 className="text-sm font-bold leading-tight text-cafe-900">
+              Offers &amp; combos
+            </h2>
+            <p className="text-xs leading-snug text-cafe-500">
+              Bundle deals — add a full combo in one tap
+            </p>
+          </div>
+          <div className="menu-suggestions">
+            {offers.map((offer) => (
+              <OfferCard
+                key={offer.id}
+                offer={offer}
+                quantity={cartQtyByOfferId.get(offer.id) ?? 0}
+                isBlocked={offerBlocked(offer)}
+                onAdd={() => addOfferToCart(offer)}
+                onUpdateQty={(delta) => updateOfferQty(offer.id, delta)}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
       {loading ? (
         <p className="px-5 py-8 text-center text-cafe-500">Loading menu…</p>
       ) : error && !items.length ? (
@@ -732,31 +772,6 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
         </p>
       ) : (
         <>
-          {!normalizedSearch && offers.length > 0 && (
-            <section className="px-5 py-4">
-              <div className="mb-3 space-y-1">
-                <h2 className="text-sm font-bold leading-tight text-cafe-900">
-                  Offers &amp; combos
-                </h2>
-                <p className="text-xs leading-snug text-cafe-500">
-                  Bundle deals — add a full combo in one tap
-                </p>
-              </div>
-              <div className="menu-suggestions">
-                {offers.map((offer) => (
-                  <OfferCard
-                    key={offer.id}
-                    offer={offer}
-                    quantity={cartQtyByOfferId.get(offer.id) ?? 0}
-                    isBlocked={offerBlocked(offer)}
-                    onAdd={() => addOfferToCart(offer)}
-                    onUpdateQty={(delta) => updateOfferQty(offer.id, delta)}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
           {!normalizedSearch && suggestions.length > 0 && (
             <section className="px-5 py-4">
               <div className="mb-3 space-y-1">

@@ -1,8 +1,11 @@
 import { notFound } from "next/navigation";
 import OrderClient from "./order-client";
 import { getBranding } from "@/lib/branding";
+import { listOffers } from "@/lib/offers";
 import { isTableOrderable } from "@/lib/table-access";
 import { getSavedCustomerForTable, validateTableAccess } from "@/lib/table-session";
+
+export const dynamic = "force-dynamic";
 
 type Props = {
   params: { tableNumber: string };
@@ -65,12 +68,14 @@ export default async function OrderPage({ params }: Props) {
 
   const savedCustomer = await getSavedCustomerForTable(tableNumber);
   const branding = await getBranding();
+  const initialOffers = await listOffers(true);
 
   return (
     <OrderClient
       tableNumber={tableNumber}
       branding={branding}
       savedCustomer={savedCustomer}
+      initialOffers={initialOffers}
     />
   );
 }
