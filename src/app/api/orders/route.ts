@@ -39,7 +39,14 @@ export async function GET(request: Request) {
       .order("created_at", { ascending: false });
 
     if (status) {
-      query = query.eq("status", status);
+      if (status.includes(",")) {
+        query = query.in(
+          "status",
+          status.split(",").map((s) => s.trim()).filter(Boolean)
+        );
+      } else {
+        query = query.eq("status", status);
+      }
     }
 
     if (from) {

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import CafeBrandingBlock from "@/components/cafe-branding-block";
 import { formatPrice } from "@/lib/format";
+import { fetchMyActiveOrders, ORDER_STATUS_POLL_MS } from "@/lib/order-poll";
 import type { CafeBranding } from "@/lib/branding-types";
 import type { OrderItem, OrderStatus, OrderWithItems } from "@/lib/types";
 
@@ -278,7 +279,9 @@ export default function OrderStatusView({ tableNumber, customerName, branding, o
   );
 
   const loadFeedback = useCallback(async () => {
-    const res = await fetch(`/api/feedback?table=${tableNumber}`);
+    const res = await fetch(`/api/feedback?table=${tableNumber}&_=${Date.now()}`, {
+      cache: "no-store",
+    });
     if (!res.ok) return;
     const data = await res.json();
     const map = new Map<string, DishFeedback>();
@@ -288,23 +291,37 @@ export default function OrderStatusView({ tableNumber, customerName, branding, o
     setFeedbackByItemId(map);
   }, [tableNumber]);
 
-  async function loadOrders() {
-    const res = await fetch(`/api/orders/my-active?table=${tableNumber}`);
-    if (!res.ok) return;
-    const data = await res.json();
-    setOrders(data.orders ?? []);
+  const loadOrders = useCallback(async () => {
+    const { orders: nextOrders } = await fetchMyActiveOrders(tableNumber);
+    setOrders(nextOrders);
     setLoading(false);
-  }
+  }, [tableNumber]);
 
   useEffect(() => {
     void loadFeedback();
     void loadOrders();
-    const interval = setInterval(() => {
+
+    function tick() {
+      if (document.visibilityState === "hidden") return;
       void loadOrders();
       void loadFeedback();
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [tableNumber, loadFeedback]);
+    }
+
+    const interval = setInterval(tick, ORDER_STATUS_POLL_MS);
+
+    function onVisible() {
+      if (document.visibilityState === "visible") {
+        void loadOrders();
+        void loadFeedback();
+      }
+    }
+
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [loadOrders, loadFeedback]);
 
   function handleFeedbackSubmitted(feedback: DishFeedback) {
     setFeedbackByItemId((prev) => {
@@ -315,7 +332,9 @@ export default function OrderStatusView({ tableNumber, customerName, branding, o
   }
 
   const allServed =
-    orders.length > 0 && orders.every((o) => o.status === "served" || o.status === "cancelled");
+    orders.length > 0 && orders.every((o) => o.status === "served");
+  const allCancelled =
+    orders.length > 0 && orders.every((o) => o.status === "cancelled");
 
   return (
     <main className="order-bg mx-auto min-h-screen max-w-lg px-5 py-8">
@@ -353,7 +372,13 @@ export default function OrderStatusView({ tableNumber, customerName, branding, o
           )}
         </div>
 
-        {allServed && orders.length > 0 && (
+        {allCancelled && (
+          <p className="rounded-xl bg-red-50 px-4 py-3 text-center text-sm text-red-800">
+            Your order was cancelled. Please contact staff if you need help.
+          </p>
+        )}
+
+        {allServed && orders.length > 0 && !allCancelled && (
           <p className="rounded-xl bg-green-50 px-4 py-3 text-center text-sm text-green-800">
             Enjoy your meal! Rate your dishes to help us improve.
           </p>
@@ -364,7 +389,7 @@ export default function OrderStatusView({ tableNumber, customerName, branding, o
         </button>
 
         <p className="text-center text-xs text-brand-subtle">
-          Status updates automatically every few seconds
+          Status updates every few seconds
         </p>
       </div>
     </main>

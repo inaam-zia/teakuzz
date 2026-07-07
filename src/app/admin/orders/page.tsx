@@ -26,7 +26,7 @@ export default function LiveOrdersPage() {
 
   async function loadOrders() {
     const { items, error: loadError } = await fetchJsonArray<OrderWithItems>(
-      "/api/orders?status=new"
+      "/api/orders?status=new,preparing"
     );
     setOrders(items);
     setError(loadError);
@@ -52,7 +52,7 @@ export default function LiveOrdersPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-cafe-900">Live orders</h2>
-        <p className="text-cafe-600">New orders appear automatically every few seconds</p>
+        <p className="text-cafe-600">New and preparing orders — updates every few seconds</p>
       </div>
 
       {error && (
@@ -65,7 +65,7 @@ export default function LiveOrdersPage() {
         <p className="text-cafe-500">Loading…</p>
       ) : orders.length === 0 ? (
         <div className="card py-12 text-center text-cafe-500">
-          No new orders — waiting for customers
+          No active orders — waiting for customers
         </div>
       ) : (
         <div className="space-y-4">

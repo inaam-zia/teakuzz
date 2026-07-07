@@ -39,7 +39,7 @@ export async function GET(request: Request) {
       .select("*, order_items(*)")
       .eq("table_number", tableNumber)
       .in("id", orderIds)
-      .in("status", ["new", "preparing", "served"])
+      .in("status", ["new", "preparing", "served", "cancelled"])
       .order("created_at", { ascending: false })
       .limit(10);
 
@@ -49,14 +49,21 @@ export async function GET(request: Request) {
 
     const orders = (data ?? []) as OrderWithItems[];
 
-    // Only show served orders from the last 30 minutes (then drop off)
+    // Keep served/cancelled visible for 30 minutes so guests see final status
     const cutoff = Date.now() - 30 * 60 * 1000;
     const filtered = orders.filter((o) => {
-      if (o.status !== "served") return true;
+      if (o.status === "new" || o.status === "preparing") return true;
       return new Date(o.created_at).getTime() > cutoff;
     });
 
-    return NextResponse.json({ orders: filtered });
+    return NextResponse.json(
+      { orders: filtered },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+        },
+      }
+    );
   } catch (err) {
     return NextResponse.json({ error: formatSupabaseError(err) }, { status: 500 });
   }

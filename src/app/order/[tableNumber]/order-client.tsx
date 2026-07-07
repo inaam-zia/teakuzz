@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatPrice } from "@/lib/format";
+import { fetchMyActiveOrders, ORDER_STATUS_POLL_MS } from "@/lib/order-poll";
 import { normalizePhone, isValidPhone } from "@/lib/phone";
 import CafeBrandingBlock from "@/components/cafe-branding-block";
 import OrderStatusView from "./order-status-view";
@@ -274,10 +275,22 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
   }, []);
 
   useEffect(() => {
-    fetch(`/api/orders/my-active?table=${tableNumber}`)
-      .then((r) => r.json())
-      .then((data) => setHasActiveOrders((data.orders?.length ?? 0) > 0))
-      .catch(() => {});
+    if (step !== "menu") return;
+
+    async function refreshActive() {
+      const { orders } = await fetchMyActiveOrders(tableNumber);
+      setHasActiveOrders(orders.length > 0);
+    }
+
+    void refreshActive();
+
+    function tick() {
+      if (document.visibilityState === "hidden") return;
+      void refreshActive();
+    }
+
+    const interval = setInterval(tick, ORDER_STATUS_POLL_MS);
+    return () => clearInterval(interval);
   }, [tableNumber, step]);
 
   const itemsByCategory = useMemo(() => {
