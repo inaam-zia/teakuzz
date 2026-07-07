@@ -279,6 +279,113 @@
     @apply mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-4xl text-green-700;
   }
 
+  .thermal-receipt {
+    @apply mx-auto w-full max-w-[20rem] rounded-sm border border-neutral-300 bg-white px-4 py-5 text-black shadow-md;
+    font-family: "Courier New", Courier, ui-monospace, monospace;
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .thermal-receipt__header {
+    @apply text-center;
+  }
+
+  .thermal-receipt__logo {
+    @apply mx-auto mb-2 h-12 w-12 object-contain;
+  }
+
+  .thermal-receipt__brand {
+    @apply mb-1 text-sm font-bold tracking-wide text-black;
+    font-size: 13px;
+  }
+
+  .thermal-receipt__address {
+    @apply text-[10px] leading-snug text-black;
+  }
+
+  .thermal-receipt__rule {
+    @apply my-2 border-0 border-t border-dashed border-neutral-400;
+  }
+
+  .thermal-receipt__rule--thick {
+    @apply border-solid border-neutral-800;
+    border-top-width: 2px;
+  }
+
+  .thermal-receipt__name-row {
+    @apply flex items-baseline gap-1 text-[11px];
+  }
+
+  .thermal-receipt__name-value {
+    @apply flex-1 border-b border-neutral-800 pb-0.5 font-medium;
+  }
+
+  .thermal-receipt__meta {
+    @apply mt-2 grid grid-cols-2 gap-2 text-[10px];
+  }
+
+  .thermal-receipt__meta-col--right {
+    @apply text-right;
+  }
+
+  .thermal-receipt__meta-label {
+    @apply font-semibold;
+  }
+
+  .thermal-receipt__table {
+    @apply w-full border-collapse text-[10px];
+  }
+
+  .thermal-receipt__th-item {
+    @apply pb-1 text-left font-bold;
+  }
+
+  .thermal-receipt__th-num {
+    @apply pb-1 text-right font-bold;
+    width: 2.5rem;
+  }
+
+  .thermal-receipt__item-name {
+    @apply py-0.5 pr-1 align-top;
+  }
+
+  .thermal-receipt__num {
+    @apply py-0.5 text-right align-top tabular-nums;
+    width: 2.5rem;
+  }
+
+  .thermal-receipt__subtotal {
+    @apply flex items-center justify-between text-[10px] font-semibold;
+  }
+
+  .thermal-receipt__grand-total {
+    @apply flex items-center justify-between text-xs font-bold;
+  }
+
+  .thermal-receipt__thanks {
+    @apply mt-2 text-center text-[11px] font-semibold;
+  }
+
+  .thermal-receipt__pay {
+    @apply text-center;
+  }
+
+  .thermal-receipt__pay-title {
+    @apply text-[11px] font-bold uppercase tracking-wide;
+  }
+
+  .thermal-receipt__pay-label {
+    @apply mt-0.5 text-[10px] text-neutral-700;
+  }
+
+  .thermal-receipt__pay-qr {
+    @apply mx-auto my-2 h-28 w-28 object-contain;
+  }
+
+  .thermal-receipt__pay-amount {
+    @apply text-[11px] font-bold;
+  }
+
   .text-brand-heading {
     color: var(--brand-heading);
   }

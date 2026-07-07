@@ -9,6 +9,7 @@ const links = [
   { href: "/admin/menu", label: "Menu" },
   { href: "/admin/tables", label: "Table QR" },
   { href: "/admin/branding", label: "Appearance" },
+  { href: "/admin/payment", label: "Payment QR" },
   { href: "/admin/history", label: "History" },
 ];
 

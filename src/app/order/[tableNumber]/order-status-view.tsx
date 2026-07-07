@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import CafeBrandingBlock from "@/components/cafe-branding-block";
+import ThermalReceipt from "@/components/thermal-receipt";
 import { formatPrice } from "@/lib/format";
 import { fetchMyActiveOrders, ORDER_STATUS_POLL_MS } from "@/lib/order-poll";
 import type { CafeBranding } from "@/lib/branding-types";
@@ -207,58 +208,79 @@ function DishFeedbackForm({
 function OrderCard({
   order,
   tableNumber,
+  customerName,
+  branding,
+  paymentQrUrl,
+  paymentQrLabel,
   feedbackByItemId,
   onFeedbackSubmitted,
 }: {
   order: OrderWithItems;
   tableNumber: number;
+  customerName: string;
+  branding: CafeBranding;
+  paymentQrUrl: string | null;
+  paymentQrLabel: string | null;
   feedbackByItemId: Map<string, DishFeedback>;
   onFeedbackSubmitted: (feedback: DishFeedback) => void;
 }) {
-  const showFeedback = order.status === "served";
+  const isServed = order.status === "served";
 
   return (
     <div className="rounded-2xl border border-brand bg-brand-surface p-4 shadow-sm">
-      <div className="mb-4">
-        <StatusTimeline status={order.status} />
-      </div>
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-sm font-semibold text-brand-heading">
-          {STATUS_LABELS[order.status]}
-        </p>
-        <p className="font-bold text-brand-muted">{formatPrice(order.total)}</p>
-      </div>
+      {!isServed && (
+        <div className="mb-4">
+          <StatusTimeline status={order.status} />
+        </div>
+      )}
 
-      {showFeedback ? (
-        <div className="border-t border-brand pt-3">
-          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-brand-subtle">
-            Rate your dishes
-          </p>
-          <ul className="space-y-2">
+      {isServed ? (
+        <>
+          <ThermalReceipt
+            order={order}
+            customerName={customerName}
+            branding={branding}
+            paymentQrUrl={paymentQrUrl}
+            paymentQrLabel={paymentQrLabel}
+          />
+          <div className="mt-5 border-t border-brand pt-4">
+            <p className="mb-3 text-xs font-bold uppercase tracking-wider text-brand-subtle">
+              Rate your dishes
+            </p>
+            <ul className="space-y-2">
+              {order.order_items.map((item) => (
+                <DishFeedbackForm
+                  key={item.id}
+                  item={item}
+                  tableNumber={tableNumber}
+                  existing={feedbackByItemId.get(item.id)}
+                  onSubmitted={onFeedbackSubmitted}
+                />
+              ))}
+            </ul>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-semibold text-brand-heading">
+              {STATUS_LABELS[order.status]}
+            </p>
+            <p className="font-bold text-brand-muted">{formatPrice(order.total)}</p>
+          </div>
+          <ul className="space-y-2 border-t border-brand pt-3">
             {order.order_items.map((item) => (
-              <DishFeedbackForm
-                key={item.id}
-                item={item}
-                tableNumber={tableNumber}
-                existing={feedbackByItemId.get(item.id)}
-                onSubmitted={onFeedbackSubmitted}
-              />
+              <li key={item.id} className="flex justify-between text-sm">
+                <span className="text-brand-heading">
+                  {item.quantity}× {item.item_name}
+                </span>
+                <span className="text-brand-muted">
+                  {formatPrice(item.item_price * item.quantity)}
+                </span>
+              </li>
             ))}
           </ul>
-        </div>
-      ) : (
-        <ul className="space-y-2 border-t border-brand pt-3">
-          {order.order_items.map((item) => (
-            <li key={item.id} className="flex justify-between text-sm">
-              <span className="text-brand-heading">
-                {item.quantity}× {item.item_name}
-              </span>
-              <span className="text-brand-muted">
-                {formatPrice(item.item_price * item.quantity)}
-              </span>
-            </li>
-          ))}
-        </ul>
+        </>
       )}
     </div>
   );
@@ -277,6 +299,16 @@ export default function OrderStatusView({ tableNumber, customerName, branding, o
   const [feedbackByItemId, setFeedbackByItemId] = useState<Map<string, DishFeedback>>(
     new Map()
   );
+  const [paymentQrUrl, setPaymentQrUrl] = useState<string | null>(null);
+  const [paymentQrLabel, setPaymentQrLabel] = useState<string | null>(null);
+
+  const loadPaymentQr = useCallback(async () => {
+    const res = await fetch(`/api/payment-qr?_=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return;
+    const data = await res.json();
+    setPaymentQrUrl(data.qr?.imageUrl ?? null);
+    setPaymentQrLabel(data.qr?.label ?? null);
+  }, []);
 
   const loadFeedback = useCallback(async () => {
     const res = await fetch(`/api/feedback?table=${tableNumber}&_=${Date.now()}`, {
@@ -300,11 +332,13 @@ export default function OrderStatusView({ tableNumber, customerName, branding, o
   useEffect(() => {
     void loadFeedback();
     void loadOrders();
+    void loadPaymentQr();
 
     function tick() {
       if (document.visibilityState === "hidden") return;
       void loadOrders();
       void loadFeedback();
+      void loadPaymentQr();
     }
 
     const interval = setInterval(tick, ORDER_STATUS_POLL_MS);
@@ -313,6 +347,7 @@ export default function OrderStatusView({ tableNumber, customerName, branding, o
       if (document.visibilityState === "visible") {
         void loadOrders();
         void loadFeedback();
+        void loadPaymentQr();
       }
     }
 
@@ -321,7 +356,7 @@ export default function OrderStatusView({ tableNumber, customerName, branding, o
       clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [loadOrders, loadFeedback]);
+  }, [loadOrders, loadFeedback, loadPaymentQr]);
 
   function handleFeedbackSubmitted(feedback: DishFeedback) {
     setFeedbackByItemId((prev) => {
@@ -343,17 +378,29 @@ export default function OrderStatusView({ tableNumber, customerName, branding, o
       </div>
       <div className="order-hero-card space-y-6">
         <div className="text-center">
-          <div className="success-check">✓</div>
-          <h1 className="text-2xl font-bold text-brand-heading">Order placed!</h1>
-          <p className="mt-2 text-sm text-brand-muted">
-            Thanks {customerName.split(" ")[0]} — we&apos;ll bring it to{" "}
-            <strong>Table {tableNumber}</strong>
-          </p>
+          {allServed && orders.length > 0 && !allCancelled ? (
+            <>
+              <div className="success-check">✓</div>
+              <h1 className="text-2xl font-bold text-brand-heading">Order served!</h1>
+              <p className="mt-2 text-sm text-brand-muted">
+                Your bill is below. Thanks {customerName.split(" ")[0]}!
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="success-check">✓</div>
+              <h1 className="text-2xl font-bold text-brand-heading">Order placed!</h1>
+              <p className="mt-2 text-sm text-brand-muted">
+                Thanks {customerName.split(" ")[0]} — we&apos;ll bring it to{" "}
+                <strong>Table {tableNumber}</strong>
+              </p>
+            </>
+          )}
         </div>
 
         <div className="space-y-3">
           <h2 className="text-sm font-bold uppercase tracking-wider text-brand-subtle">
-            Your order status
+            {allServed && !allCancelled ? "Your bill" : "Your order status"}
           </h2>
           {loading ? (
             <p className="text-center text-sm text-brand-muted">Loading status…</p>
@@ -365,6 +412,10 @@ export default function OrderStatusView({ tableNumber, customerName, branding, o
                 key={order.id}
                 order={order}
                 tableNumber={tableNumber}
+                customerName={customerName}
+                branding={branding}
+                paymentQrUrl={paymentQrUrl}
+                paymentQrLabel={paymentQrLabel}
                 feedbackByItemId={feedbackByItemId}
                 onFeedbackSubmitted={handleFeedbackSubmitted}
               />
@@ -380,7 +431,7 @@ export default function OrderStatusView({ tableNumber, customerName, branding, o
 
         {allServed && orders.length > 0 && !allCancelled && (
           <p className="rounded-xl bg-green-50 px-4 py-3 text-center text-sm text-green-800">
-            Enjoy your meal! Rate your dishes to help us improve.
+            Enjoy your meal! Rate your dishes below to help us improve.
           </p>
         )}
 
