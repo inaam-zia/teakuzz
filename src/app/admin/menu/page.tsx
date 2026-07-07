@@ -4,6 +4,17 @@ import { useEffect, useState } from "react";
 import { formatPrice } from "@/lib/format";
 import type { MenuCategory, MenuItem } from "@/lib/types";
 
+async function uploadMenuImageFile(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch("/api/menu/upload", { method: "POST", body: formData });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Could not upload image");
+  }
+  return data.url as string;
+}
+
 export default function MenuPage() {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
@@ -17,7 +28,10 @@ export default function MenuPage() {
     description: "",
     price: "",
     category_id: "",
+    imageFile: null as File | null,
+    imagePreview: "",
   });
+  const [uploading, setUploading] = useState(false);
 
   function loadMenu() {
     fetch("/api/menu")
@@ -42,28 +56,49 @@ export default function MenuPage() {
   async function addItem(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setUploading(true);
 
-    const res = await fetch("/api/menu", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: form.name,
-        description: form.description,
-        price: parseFloat(form.price),
-        category_id: form.category_id || null,
-      }),
-    });
+    try {
+      let imageUrl: string | null = null;
+      if (form.imageFile) {
+        imageUrl = await uploadMenuImageFile(form.imageFile);
+      }
 
-    const data = await res.json();
+      const res = await fetch("/api/menu", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name,
+          description: form.description,
+          price: parseFloat(form.price),
+          category_id: form.category_id || null,
+          image_url: imageUrl,
+        }),
+      });
 
-    if (!res.ok) {
-      setError(data.error || "Could not save item");
-      return;
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Could not save item");
+        return;
+      }
+
+      if (form.imagePreview) URL.revokeObjectURL(form.imagePreview);
+      setForm({
+        name: "",
+        description: "",
+        price: "",
+        category_id: "",
+        imageFile: null,
+        imagePreview: "",
+      });
+      setShowForm(false);
+      loadMenu();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save item");
+    } finally {
+      setUploading(false);
     }
-
-    setForm({ name: "", description: "", price: "", category_id: "" });
-    setShowForm(false);
-    loadMenu();
   }
 
   async function addCategory(e: React.FormEvent) {
@@ -122,6 +157,43 @@ export default function MenuPage() {
       return;
     }
 
+    loadMenu();
+  }
+
+  async function updateItemImage(item: MenuItem, file: File) {
+    setError("");
+    setUploading(true);
+    try {
+      const imageUrl = await uploadMenuImageFile(file);
+      const res = await fetch(`/api/menu/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_url: imageUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Could not update image");
+        return;
+      }
+      loadMenu();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update image");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function removeItemImage(item: MenuItem) {
+    const res = await fetch(`/api/menu/${item.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image_url: null }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error || "Could not remove image");
+      return;
+    }
     loadMenu();
   }
 
@@ -234,8 +306,40 @@ export default function MenuPage() {
               </option>
             ))}
           </select>
-          <button type="submit" className="btn-primary">
-            Save item
+          <div>
+            <label className="mb-1 block text-sm font-medium text-cafe-700">
+              Photo <span className="font-normal text-cafe-400">(optional)</span>
+            </label>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) {
+                  if (form.imagePreview) URL.revokeObjectURL(form.imagePreview);
+                  setForm({ ...form, imageFile: null, imagePreview: "" });
+                  return;
+                }
+                if (form.imagePreview) URL.revokeObjectURL(form.imagePreview);
+                setForm({
+                  ...form,
+                  imageFile: file,
+                  imagePreview: URL.createObjectURL(file),
+                });
+              }}
+              className="input-field py-2 file:mr-3 file:rounded-lg file:border-0 file:bg-cafe-100 file:px-3 file:py-1 file:text-sm file:font-medium file:text-cafe-800"
+            />
+            {form.imagePreview && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={form.imagePreview}
+                alt="Preview"
+                className="mt-3 h-24 w-24 rounded-xl object-cover"
+              />
+            )}
+          </div>
+          <button type="submit" disabled={uploading} className="btn-primary">
+            {uploading ? "Saving…" : "Save item"}
           </button>
         </form>
       )}
@@ -266,7 +370,10 @@ export default function MenuPage() {
                         item={item}
                         onToggle={() => toggleAvailable(item)}
                         onSavePrice={(price) => updateItemPrice(item, price)}
+                        onUpdateImage={(file) => updateItemImage(item, file)}
+                        onRemoveImage={() => removeItemImage(item)}
                         onDelete={() => deleteItem(item.id)}
+                        disabled={uploading}
                       />
                     ))}
                   </div>
@@ -287,7 +394,10 @@ export default function MenuPage() {
                       item={item}
                       onToggle={() => toggleAvailable(item)}
                       onSavePrice={(price) => updateItemPrice(item, price)}
+                      onUpdateImage={(file) => updateItemImage(item, file)}
+                      onRemoveImage={() => removeItemImage(item)}
                       onDelete={() => deleteItem(item.id)}
+                      disabled={uploading}
                     />
                   ))}
               </div>
@@ -357,12 +467,18 @@ function MenuItemRow({
   item,
   onToggle,
   onSavePrice,
+  onUpdateImage,
+  onRemoveImage,
   onDelete,
+  disabled,
 }: {
   item: MenuItem;
   onToggle: () => void;
   onSavePrice: (price: string) => void;
+  onUpdateImage: (file: File) => void;
+  onRemoveImage: () => void;
   onDelete: () => void;
+  disabled?: boolean;
 }) {
   const [editingPrice, setEditingPrice] = useState(false);
   const [price, setPrice] = useState(String(item.price));
@@ -382,11 +498,49 @@ function MenuItemRow({
         !item.available ? "opacity-50" : ""
       }`}
     >
-      <div>
-        <p className="font-semibold text-cafe-900">{item.name}</p>
-        {item.description && (
-          <p className="text-sm text-cafe-500">{item.description}</p>
+      <div className="flex min-w-0 flex-1 items-start gap-3">
+        {item.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={item.image_url}
+            alt={item.name}
+            className="h-16 w-16 shrink-0 rounded-xl object-cover bg-cafe-100"
+          />
+        ) : (
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-cafe-100 text-xs text-cafe-400">
+            No photo
+          </div>
         )}
+        <div className="min-w-0">
+          <p className="font-semibold text-cafe-900">{item.name}</p>
+          {item.description && (
+            <p className="text-sm text-cafe-500">{item.description}</p>
+          )}
+          <label className="mt-2 inline-block cursor-pointer text-xs font-medium text-cafe-700 hover:underline">
+            {item.image_url ? "Change photo" : "Add photo"}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              disabled={disabled}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) onUpdateImage(file);
+                e.target.value = "";
+              }}
+            />
+          </label>
+          {item.image_url && (
+            <button
+              type="button"
+              onClick={onRemoveImage}
+              disabled={disabled}
+              className="ml-3 text-xs text-red-600 hover:underline"
+            >
+              Remove photo
+            </button>
+          )}
+        </div>
       </div>
       <div className="flex items-center gap-3">
         {editingPrice ? (

@@ -11,6 +11,7 @@ export type MenuItem = {
   description: string;
   price: number;
   available: boolean;
+  image_url: string | null;
   created_at: string;
 };
 
@@ -57,6 +58,5 @@ export type PlaceOrderPayload = {
   tableNumber: number;
   customerName: string;
   customerPhone: string;
-  customerEmail?: string;
   items: { menuItemId: string; quantity: number }[];
 };

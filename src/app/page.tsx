@@ -22,10 +22,6 @@ export default function HomePage() {
           No app needed — works in your phone browser.
         </div>
 
-        <Link href="/my-orders" className="btn-primary w-full">
-          View past orders
-        </Link>
-
         <Link href="/admin/login" className="btn-secondary w-full">
           Admin login
         </Link>

@@ -4,7 +4,6 @@ import { createServerClient, isSupabaseConfigured } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/supabase-errors";
 import { insertOrder } from "@/lib/insert-order";
 import { isAdminAuthenticated, getRecentOrderCookieConfig } from "@/lib/auth";
-import { normalizeEmail, isValidEmail } from "@/lib/email";
 import { isTableOrderable } from "@/lib/table-access";
 import type { PlaceOrderPayload } from "@/lib/types";
 
@@ -103,14 +102,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid phone number" }, { status: 400 });
     }
 
-    const emailRaw = body.customerEmail?.trim();
-    const customerEmail =
-      emailRaw && isValidEmail(emailRaw) ? normalizeEmail(emailRaw) : null;
-
-    if (emailRaw && !customerEmail) {
-      return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
-    }
-
     const menuIds = body.items.map((i) => i.menuItemId);
     const { data: menuItems, error: menuError } = await supabase
       .from("menu_items")
@@ -155,7 +146,6 @@ export async function POST(request: Request) {
       table_number: body.tableNumber,
       customer_name: body.customerName.trim(),
       customer_phone: phoneDigits,
-      customer_email: customerEmail,
       total,
       status: "new",
     });

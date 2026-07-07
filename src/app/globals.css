@@ -69,6 +69,10 @@
     @apply flex w-full items-start gap-4 rounded-2xl border border-cafe-200/80 bg-white p-4 text-left shadow-sm transition hover:border-cafe-400 hover:shadow-md active:scale-[0.99];
   }
 
+  .menu-item-image {
+    @apply h-20 w-20 shrink-0 rounded-xl bg-cafe-100 object-cover;
+  }
+
   .menu-price {
     @apply shrink-0 rounded-xl bg-cafe-100 px-3 py-1.5 text-sm font-bold text-cafe-800;
   }
