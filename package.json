@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed:menu": "node scripts/seed-teakkuz-menu.mjs"
+    "seed:menu": "node scripts/seed-teakkuz-menu.mjs",
+    "generate:menu-images": "node scripts/generate-menu-images.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
