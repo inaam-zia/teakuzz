@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from "next/cache";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase";
 import {
   type CafeBranding,
@@ -21,6 +22,8 @@ export function clearBrandingCache() {
 }
 
 export async function getBranding(): Promise<CafeBranding> {
+  noStore();
+
   if (cache && Date.now() - cache.at < CACHE_MS) {
     return cache.data;
   }

@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { clearBrandingCache, getBranding } from "@/lib/branding";
@@ -68,6 +69,7 @@ export async function PATCH(request: Request) {
     }
 
     clearBrandingCache();
+    revalidatePath("/", "layout");
     const branding = await getBranding();
     return NextResponse.json(branding);
   } catch (err) {

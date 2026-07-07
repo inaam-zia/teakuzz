@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { clearBrandingCache } from "@/lib/branding";
@@ -64,6 +65,7 @@ export async function POST(request: Request) {
     }
 
     clearBrandingCache();
+    revalidatePath("/", "layout");
     return NextResponse.json({ url });
   } catch (err) {
     return NextResponse.json({ error: formatSupabaseError(err) }, { status: 500 });
@@ -90,6 +92,7 @@ export async function DELETE() {
     }
 
     clearBrandingCache();
+    revalidatePath("/", "layout");
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json({ error: formatSupabaseError(err) }, { status: 500 });

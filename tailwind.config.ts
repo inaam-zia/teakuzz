@@ -10,16 +10,16 @@ const config: Config = {
     extend: {
       colors: {
         cafe: {
-          50: "#faf6f1",
-          100: "#f3ebe0",
-          200: "#e6d4bc",
-          300: "#d4b896",
-          400: "#c49a6c",
-          500: "#b8834f",
-          600: "#a66d43",
-          700: "#8a5639",
-          800: "#714733",
-          900: "#5c3b2c",
+          50: "var(--brand-bg)",
+          100: "var(--brand-bg-top)",
+          200: "var(--brand-border)",
+          300: "var(--brand-border)",
+          400: "var(--brand-accent)",
+          500: "var(--brand-subtle)",
+          600: "var(--brand-muted)",
+          700: "var(--brand-primary)",
+          800: "var(--brand-primary-hover)",
+          900: "var(--brand-heading)",
         },
       },
       fontFamily: {

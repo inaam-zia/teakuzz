@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { formatPrice } from "@/lib/format";
 import { normalizePhone, isValidPhone } from "@/lib/phone";
 import CafeLogo from "@/components/cafe-logo";
+import OrderStatusView from "./order-status-view";
 import type { CafeBranding } from "@/lib/branding-types";
 import type { CartItem, MenuCategory, MenuItem } from "@/lib/types";
 
@@ -33,7 +34,7 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
   const [error, setError] = useState("");
   const [showCart, setShowCart] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
-  const [lastOrderTotal, setLastOrderTotal] = useState(0);
+  const [hasActiveOrders, setHasActiveOrders] = useState(false);
 
   const hasSavedDetails = Boolean(customerName.trim() && customerPhone.trim());
 
@@ -61,6 +62,13 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
       .catch(() => setError("Could not load menu — check your internet connection"))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    fetch(`/api/orders/my-active?table=${tableNumber}`)
+      .then((r) => r.json())
+      .then((data) => setHasActiveOrders((data.orders?.length ?? 0) > 0))
+      .catch(() => {});
+  }, [tableNumber, step]);
 
   const itemsByCategory = useMemo(() => {
     const grouped = new Map<string, MenuItem[]>();
@@ -161,7 +169,7 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
 
     setCustomerName(name);
     setCustomerPhone(phone);
-    setLastOrderTotal(cartTotal);
+    setHasActiveOrders(true);
     setStep("done");
     setCart([]);
     setShowCart(false);
@@ -182,29 +190,17 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
     setShowCart(false);
   }
 
+  function viewOrderStatus() {
+    setStep("done");
+  }
+
   if (step === "done") {
     return (
-      <main className="order-bg flex min-h-screen items-center justify-center px-5">
-        <div className="order-hero-card w-full max-w-lg text-center">
-          <div className="success-check">✓</div>
-          <h1 className="text-2xl font-bold text-cafe-900">Order placed!</h1>
-          <p className="mt-2 text-cafe-600">
-            Thanks {customerName.split(" ")[0]} — we&apos;ll bring it to{" "}
-            <strong>Table {tableNumber}</strong> shortly.
-          </p>
-          <p className="mt-4 rounded-xl bg-cafe-50 px-4 py-3 text-sm text-cafe-600">
-            Total: <strong className="text-cafe-900">{formatPrice(lastOrderTotal)}</strong>
-          </p>
-          <button onClick={orderAgain} className="order-btn mt-6 w-full">
-            Add more items
-          </button>
-          {hasSavedDetails && (
-            <p className="mt-3 text-xs text-cafe-500">
-              Your details are saved for this visit — no need to enter them again.
-            </p>
-          )}
-        </div>
-      </main>
+      <OrderStatusView
+        tableNumber={tableNumber}
+        customerName={customerName}
+        onAddMore={orderAgain}
+      />
     );
   }
 
@@ -220,6 +216,15 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
               <p className="mt-1 text-xs text-brand-subtle">
                 Ordering as <strong className="text-brand-muted">{customerName}</strong>
               </p>
+            )}
+            {hasActiveOrders && step === "menu" && (
+              <button
+                type="button"
+                onClick={viewOrderStatus}
+                className="mt-2 text-xs font-semibold text-[var(--brand-primary)] underline-offset-2 hover:underline"
+              >
+                View order status →
+              </button>
             )}
           </div>
           <span className="table-badge-sm">{cartCount > 0 ? cartCount : "☕"}</span>

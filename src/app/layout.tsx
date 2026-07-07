@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
+import type { CSSProperties } from "react";
 import { DM_Sans, Inter, Poppins, Lora } from "next/font/google";
 import "./globals.css";
 import BrandingStyles from "@/components/branding-styles";
 import { getBranding } from "@/lib/branding";
+import { themeToCssVars } from "@/lib/branding-types";
+
+export const dynamic = "force-dynamic";
 
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans" });
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -24,8 +28,10 @@ export default async function RootLayout({
 }>) {
   const branding = await getBranding();
 
+  const themeStyle = themeToCssVars(branding.theme) as CSSProperties;
+
   return (
-    <html lang="en">
+    <html lang="en" style={themeStyle}>
       <body className={`${dmSans.variable} ${inter.variable} ${poppins.variable} ${lora.variable}`}>
         <BrandingStyles branding={branding} />
         {children}
