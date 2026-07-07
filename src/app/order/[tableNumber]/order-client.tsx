@@ -85,6 +85,138 @@ function MenuItemRow({
   );
 }
 
+function MenuSuggestionCard({
+  item,
+  quantity,
+  onAdd,
+  onUpdateQty,
+}: {
+  item: MenuItem;
+  quantity: number;
+  onAdd: () => void;
+  onUpdateQty: (delta: number) => void;
+}) {
+  return (
+    <div
+      className={`menu-suggestion-card ${quantity > 0 ? "menu-suggestion-card--in-cart" : ""}`}
+    >
+      {item.image_url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={item.image_url} alt="" className="menu-suggestion-image" />
+      ) : (
+        <div className="menu-suggestion-placeholder text-lg font-bold text-cafe-500">
+          {item.name.charAt(0)}
+        </div>
+      )}
+      <p className="line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-tight text-cafe-900">
+        {item.name}
+      </p>
+      <div className="mt-2 flex items-center justify-between gap-1">
+        <span className="text-xs font-bold text-cafe-700">{formatPrice(item.price)}</span>
+        {quantity > 0 ? (
+          <div className="qty-controls gap-1.5">
+            <button
+              type="button"
+              onClick={() => onUpdateQty(-1)}
+              className="qty-btn h-7 w-7 text-base"
+              aria-label={`Decrease ${item.name} quantity`}
+            >
+              −
+            </button>
+            <span className="w-4 text-center text-xs font-semibold">{quantity}</span>
+            <button
+              type="button"
+              onClick={() => onUpdateQty(1)}
+              className="qty-btn qty-btn-plus h-7 w-7 text-base"
+              aria-label={`Increase ${item.name} quantity`}
+            >
+              +
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onAdd}
+            className="qty-btn qty-btn-plus h-7 w-7 text-base"
+            aria-label={`Add ${item.name}`}
+          >
+            +
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MenuCategorySection({
+  title,
+  items,
+  expanded,
+  onToggle,
+  cartQtyById,
+  onAdd,
+  onUpdateQty,
+}: {
+  title: string;
+  items: MenuItem[];
+  expanded: boolean;
+  onToggle: () => void;
+  cartQtyById: Map<string, number>;
+  onAdd: (item: MenuItem) => void;
+  onUpdateQty: (menuItemId: string, delta: number) => void;
+}) {
+  const sectionCartCount = items.reduce(
+    (sum, item) => sum + (cartQtyById.get(item.id) ?? 0),
+    0
+  );
+
+  return (
+    <section>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="order-category-toggle"
+        aria-expanded={expanded}
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="order-category">{title}</span>
+          <span className="text-[10px] font-semibold normal-case tracking-normal text-cafe-500">
+            {items.length} item{items.length === 1 ? "" : "s"}
+          </span>
+          {sectionCartCount > 0 ? (
+            <span className="rounded-full bg-[var(--brand-primary)] px-2 py-0.5 text-[10px] font-bold text-[var(--brand-button-text)]">
+              {sectionCartCount}
+            </span>
+          ) : null}
+        </div>
+        <svg
+          className={`order-category-chevron h-4 w-4 ${expanded ? "" : "order-category-chevron--collapsed"}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2.5}
+          aria-hidden
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {expanded ? (
+        <div className="space-y-3">
+          {items.map((item) => (
+            <MenuItemRow
+              key={item.id}
+              item={item}
+              quantity={cartQtyById.get(item.id) ?? 0}
+              onAdd={() => onAdd(item)}
+              onUpdateQty={(delta) => onUpdateQty(item.id, delta)}
+            />
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 export default function OrderClient({ tableNumber, branding, savedCustomer }: Props) {
   const [step, setStep] = useState<Step>("menu");
   const [categories, setCategories] = useState<MenuCategory[]>([]);
@@ -100,6 +232,9 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
   const [showCheckout, setShowCheckout] = useState(false);
   const [hasActiveOrders, setHasActiveOrders] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const [suggestions, setSuggestions] = useState<MenuItem[]>([]);
+  const [suggestionsSource, setSuggestionsSource] = useState<"sales" | "menu">("menu");
 
   const hasSavedDetails = Boolean(customerName.trim() && normalizePhone(customerPhone));
 
@@ -126,6 +261,16 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
       })
       .catch(() => setError("Could not load menu — check your internet connection"))
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/menu/suggestions")
+      .then((r) => r.json())
+      .then((data: { suggestions?: MenuItem[]; source?: "sales" | "menu" }) => {
+        setSuggestions((data.suggestions ?? []).filter((i) => i.available));
+        if (data.source) setSuggestionsSource(data.source);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -185,6 +330,23 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
 
   const cartTotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
+
+  function isCategoryExpanded(categoryKey: string): boolean {
+    if (normalizedSearch) return true;
+    return !collapsedCategories.has(categoryKey);
+  }
+
+  function toggleCategory(categoryKey: string) {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(categoryKey)) {
+        next.delete(categoryKey);
+      } else {
+        next.add(categoryKey);
+      }
+      return next;
+    });
+  }
 
   function addToCart(item: MenuItem) {
     setCart((prev) => {
@@ -374,34 +536,24 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
           No items match &ldquo;{searchQuery.trim()}&rdquo;
         </p>
       ) : (
-        <div className="space-y-7 px-5 py-2">
-          {categories.map((cat) => {
-            const catItems = visibleItemsByCategory.get(cat.id);
-            if (!catItems?.length) return null;
-            return (
-              <section key={cat.id}>
-                <h2 className="order-category">{cat.name}</h2>
-                <div className="space-y-3">
-                  {catItems.map((item) => (
-                    <MenuItemRow
-                      key={item.id}
-                      item={item}
-                      quantity={cartQtyById.get(item.id) ?? 0}
-                      onAdd={() => addToCart(item)}
-                      onUpdateQty={(delta) => updateQty(item.id, delta)}
-                    />
-                  ))}
+        <>
+          {!normalizedSearch && suggestions.length > 0 && (
+            <section className="px-5 pb-2 pt-1">
+              <div className="mb-3 flex items-baseline justify-between gap-2">
+                <div>
+                  <h2 className="text-sm font-bold text-cafe-900">
+                    {suggestionsSource === "sales" ? "Popular picks" : "Suggested for you"}
+                  </h2>
+                  <p className="text-xs text-cafe-500">
+                    {suggestionsSource === "sales"
+                      ? "Guest favourites — add in one tap"
+                      : "Great choices to start your order"}
+                  </p>
                 </div>
-              </section>
-            );
-          })}
-
-          {visibleItemsByCategory.get("other")?.length ? (
-            <section>
-              <h2 className="order-category">Other</h2>
-              <div className="space-y-3">
-                {visibleItemsByCategory.get("other")!.map((item) => (
-                  <MenuItemRow
+              </div>
+              <div className="menu-suggestions">
+                {suggestions.map((item) => (
+                  <MenuSuggestionCard
                     key={item.id}
                     item={item}
                     quantity={cartQtyById.get(item.id) ?? 0}
@@ -411,8 +563,39 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
                 ))}
               </div>
             </section>
+          )}
+
+          <div className="space-y-7 px-5 py-2">
+          {categories.map((cat) => {
+            const catItems = visibleItemsByCategory.get(cat.id);
+            if (!catItems?.length) return null;
+            return (
+              <MenuCategorySection
+                key={cat.id}
+                title={cat.name}
+                items={catItems}
+                expanded={isCategoryExpanded(cat.id)}
+                onToggle={() => toggleCategory(cat.id)}
+                cartQtyById={cartQtyById}
+                onAdd={addToCart}
+                onUpdateQty={updateQty}
+              />
+            );
+          })}
+
+          {visibleItemsByCategory.get("other")?.length ? (
+            <MenuCategorySection
+              title="Other"
+              items={visibleItemsByCategory.get("other")!}
+              expanded={isCategoryExpanded("other")}
+              onToggle={() => toggleCategory("other")}
+              cartQtyById={cartQtyById}
+              onAdd={addToCart}
+              onUpdateQty={updateQty}
+            />
           ) : null}
-        </div>
+          </div>
+        </>
       )}
 
       {cartCount > 0 && (
