@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import CafeBrandingBlock from "@/components/cafe-branding-block";
 import { formatPrice } from "@/lib/format";
+import type { CafeBranding } from "@/lib/branding-types";
 import type { OrderStatus, OrderWithItems } from "@/lib/types";
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
@@ -91,10 +93,11 @@ function OrderCard({ order }: { order: OrderWithItems }) {
 type Props = {
   tableNumber: number;
   customerName: string;
+  branding: CafeBranding;
   onAddMore: () => void;
 };
 
-export default function OrderStatusView({ tableNumber, customerName, onAddMore }: Props) {
+export default function OrderStatusView({ tableNumber, customerName, branding, onAddMore }: Props) {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -117,6 +120,9 @@ export default function OrderStatusView({ tableNumber, customerName, onAddMore }
 
   return (
     <main className="order-bg mx-auto min-h-screen max-w-lg px-5 py-8">
+      <div className="mb-6">
+        <CafeBrandingBlock branding={branding} logoSize="md" showTagline align="center" />
+      </div>
       <div className="order-hero-card space-y-6">
         <div className="text-center">
           <div className="success-check">✓</div>

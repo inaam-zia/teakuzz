@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatPrice } from "@/lib/format";
 import { normalizePhone, isValidPhone } from "@/lib/phone";
-import CafeLogo from "@/components/cafe-logo";
+import CafeBrandingBlock from "@/components/cafe-branding-block";
 import OrderStatusView from "./order-status-view";
 import type { CafeBranding } from "@/lib/branding-types";
 import type { CartItem, MenuCategory, MenuItem } from "@/lib/types";
@@ -199,6 +199,7 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
       <OrderStatusView
         tableNumber={tableNumber}
         customerName={customerName}
+        branding={branding}
         onAddMore={orderAgain}
       />
     );
@@ -208,10 +209,10 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
     <main className="order-bg mx-auto min-h-screen max-w-lg pb-28">
       <header className="order-header sticky top-0 z-10 px-5 py-5">
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <CafeLogo branding={branding} size="sm" />
-            <h1 className="mt-2 text-xl font-bold text-brand-heading">Table {tableNumber}</h1>
-            <p className="mt-0.5 text-sm text-brand-muted">Tap items to add to your order</p>
+          <div className="min-w-0 flex-1">
+            <CafeBrandingBlock branding={branding} logoSize="md" showTagline />
+            <p className="mt-2 text-sm font-semibold text-brand-heading">Table {tableNumber}</p>
+            <p className="mt-0.5 text-xs text-brand-subtle">Tap items to add to your order</p>
             {hasSavedDetails && (
               <p className="mt-1 text-xs text-brand-subtle">
                 Ordering as <strong className="text-brand-muted">{customerName}</strong>
@@ -227,7 +228,9 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
               </button>
             )}
           </div>
-          <span className="table-badge-sm">{cartCount > 0 ? cartCount : "☕"}</span>
+          <span className="table-badge-sm" aria-label={`${cartCount} items in cart`}>
+            {cartCount}
+          </span>
         </div>
       </header>
 
