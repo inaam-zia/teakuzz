@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getOrderUrl } from "@/lib/site-url";
+import { getScanUrl } from "@/lib/site-url";
 import type { CafeTable } from "@/lib/types";
 
 export default function TablesPage() {
@@ -94,8 +94,29 @@ export default function TablesPage() {
     await loadTables();
   }
 
+  async function clearTableSession(table: CafeTable) {
+    if (
+      !confirm(
+        `Mark Table ${table.table_number} as ready for new guests? Previous customers will need to scan the QR again and re-enter their details.`
+      )
+    ) {
+      return;
+    }
+
+    setError("");
+    const res = await fetch(`/api/tables/${table.id}/clear-session`, { method: "POST" });
+    const data = await res.json();
+
+    if (!res.ok) {
+      setError(data.error || "Could not reset table");
+      return;
+    }
+
+    await loadTables();
+  }
+
   function printQr(table: CafeTable) {
-    const orderUrl = getOrderUrl(table.table_number);
+    const scanUrl = getScanUrl(table.table_number);
     const qrSrc = `/api/tables/qr?number=${table.table_number}&t=${Date.now()}`;
     const win = window.open("", "_blank");
     if (!win) return;
@@ -116,7 +137,7 @@ export default function TablesPage() {
     <h1>Table ${table.table_number}</h1>
     <p>Scan to order</p>
     <img src="${qrSrc}" alt="QR code" />
-    <p class="url">${orderUrl}</p>
+    <p class="url">${scanUrl}</p>
   </div>
   <script>window.onload = () => { window.print(); }</script>
 </body></html>`);
@@ -173,7 +194,7 @@ export default function TablesPage() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-lg font-bold text-cafe-900">Table {table.table_number}</p>
-                  <p className="text-sm text-cafe-500">{getOrderUrl(table.table_number)}</p>
+                  <p className="text-sm text-cafe-500">{getScanUrl(table.table_number)}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span
@@ -200,6 +221,13 @@ export default function TablesPage() {
                     className="btn-secondary text-sm"
                   >
                     {expandedId === table.id ? "Hide QR" : "Show QR"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => clearTableSession(table)}
+                    className="btn-secondary text-sm"
+                  >
+                    New guests
                   </button>
                   <button
                     type="button"

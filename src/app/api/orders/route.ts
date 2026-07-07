@@ -5,6 +5,10 @@ import { formatSupabaseError } from "@/lib/supabase-errors";
 import { insertOrder } from "@/lib/insert-order";
 import { isAdminAuthenticated, getRecentOrderCookieConfig } from "@/lib/auth";
 import { isTableOrderable } from "@/lib/table-access";
+import {
+  getTableCustomerCookieConfig,
+  validateTableAccess,
+} from "@/lib/table-session";
 import type { PlaceOrderPayload } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -89,6 +93,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
+    const sessionCheck = await validateTableAccess(body.tableNumber);
+    if (!sessionCheck.ok && sessionCheck.sessionsEnabled) {
+      return NextResponse.json(
+        { error: "Please scan the QR code on your table to place an order" },
+        { status: 403 }
+      );
+    }
+
     if (!body.customerName?.trim()) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
@@ -169,6 +181,17 @@ export async function POST(request: Request) {
     }
 
     cookies().set(getRecentOrderCookieConfig(order.id));
+
+    if (sessionCheck.sessionId) {
+      cookies().set(
+        getTableCustomerCookieConfig(
+          body.tableNumber,
+          sessionCheck.sessionId,
+          body.customerName.trim(),
+          phoneDigits
+        )
+      );
+    }
 
     return NextResponse.json({ orderId: order.id, total });
   } catch (err) {

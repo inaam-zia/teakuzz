@@ -3,86 +3,185 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --brand-primary: #8a5639;
+    --brand-primary-hover: #714733;
+    --brand-bg: #faf6f1;
+    --brand-bg-top: #f3ebe0;
+    --brand-surface: #ffffff;
+    --brand-border: #e6d4bc;
+    --brand-header-bg: rgba(255, 255, 255, 0.85);
+    --brand-footer-bg: rgba(255, 255, 255, 0.95);
+    --brand-heading: #5c3b2c;
+    --brand-text: #5c3b2c;
+    --brand-muted: #8a5639;
+    --brand-subtle: #b8834f;
+    --brand-button-text: #ffffff;
+    --brand-accent: #c49a6c;
+    --brand-font-family: var(--font-dm-sans), system-ui, sans-serif;
+    --brand-font-size-base: 16px;
+    --brand-font-size-heading: 24px;
+    --brand-font-size-small: 14px;
+  }
+
   body {
-    @apply bg-cafe-50 text-cafe-900 antialiased;
+    background-color: var(--brand-bg);
+    color: var(--brand-text);
+    font-family: var(--brand-font-family);
+    font-size: var(--brand-font-size-base);
+    @apply antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    color: var(--brand-heading);
+    font-size: var(--brand-font-size-heading);
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-xl bg-cafe-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-cafe-800 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50;
+    background-color: var(--brand-primary);
+    color: var(--brand-button-text);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--brand-primary-hover);
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-xl border border-cafe-300 bg-white px-5 py-3 text-sm font-semibold text-cafe-800 transition hover:bg-cafe-100;
+    @apply inline-flex items-center justify-center rounded-xl border bg-white px-5 py-3 text-sm font-semibold transition;
+    border-color: var(--brand-border);
+    color: var(--brand-muted);
+  }
+
+  .btn-secondary:hover {
+    background-color: var(--brand-bg-top);
   }
 
   .input-field {
-    @apply w-full rounded-xl border border-cafe-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-cafe-500 focus:ring-2 focus:ring-cafe-200;
+    @apply w-full rounded-xl border bg-white px-4 py-3 outline-none transition focus:ring-2;
+    border-color: var(--brand-border);
+    font-size: var(--brand-font-size-small);
+    color: var(--brand-text);
+  }
+
+  .input-field:focus {
+    border-color: var(--brand-primary);
+    --tw-ring-color: color-mix(in srgb, var(--brand-primary) 25%, transparent);
   }
 
   .card {
-    @apply rounded-2xl border border-cafe-200 bg-white p-5 shadow-sm;
+    @apply rounded-2xl border p-5 shadow-sm;
+    border-color: var(--brand-border);
+    background-color: var(--brand-surface);
   }
 
   .order-bg {
-    @apply bg-gradient-to-b from-cafe-100 via-cafe-50 to-white;
+    background: linear-gradient(to bottom, var(--brand-bg-top), var(--brand-bg), var(--brand-surface));
   }
 
   .order-hero-card {
-    @apply rounded-3xl border border-cafe-200/80 bg-white/90 p-8 shadow-xl shadow-cafe-200/40 backdrop-blur-sm;
+    @apply rounded-3xl border p-8 shadow-xl backdrop-blur-sm;
+    border-color: color-mix(in srgb, var(--brand-border) 80%, transparent);
+    background-color: color-mix(in srgb, var(--brand-surface) 90%, transparent);
   }
 
   .order-header {
-    @apply border-b border-cafe-200/80 bg-white/80 backdrop-blur-md;
+    @apply border-b backdrop-blur-md;
+    border-color: color-mix(in srgb, var(--brand-border) 80%, transparent);
+    background-color: var(--brand-header-bg);
+  }
+
+  .order-footer {
+    @apply border-t backdrop-blur-md;
+    border-color: color-mix(in srgb, var(--brand-border) 80%, transparent);
+    background-color: var(--brand-footer-bg);
   }
 
   .order-label {
-    @apply mb-2 block text-sm font-semibold text-cafe-700;
+    @apply mb-2 block font-semibold;
+    font-size: var(--brand-font-size-small);
+    color: var(--brand-muted);
   }
 
   .order-input {
-    @apply w-full rounded-2xl border border-cafe-200 bg-cafe-50/50 px-4 py-3.5 text-base text-cafe-900 outline-none transition placeholder:text-cafe-300 focus:border-cafe-500 focus:bg-white focus:ring-4 focus:ring-cafe-200/50;
+    @apply w-full rounded-2xl border px-4 py-3.5 outline-none transition focus:ring-4;
+    border-color: var(--brand-border);
+    background-color: color-mix(in srgb, var(--brand-bg) 50%, transparent);
+    font-size: var(--brand-font-size-base);
+    color: var(--brand-text);
+  }
+
+  .order-input:focus {
+    border-color: var(--brand-primary);
+    background-color: var(--brand-surface);
+    --tw-ring-color: color-mix(in srgb, var(--brand-primary) 20%, transparent);
   }
 
   .order-btn {
-    @apply inline-flex items-center justify-center rounded-2xl bg-cafe-700 px-6 py-4 text-base font-semibold text-white shadow-lg shadow-cafe-700/25 transition hover:bg-cafe-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center rounded-2xl px-6 py-4 font-semibold shadow-lg transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
+    background-color: var(--brand-primary);
+    color: var(--brand-button-text);
+    font-size: var(--brand-font-size-base);
+  }
+
+  .order-btn:hover:not(:disabled) {
+    background-color: var(--brand-primary-hover);
   }
 
   .order-btn-secondary {
-    @apply inline-flex items-center justify-center rounded-2xl border-2 border-cafe-300 bg-white px-6 py-4 text-base font-semibold text-cafe-800 transition hover:bg-cafe-50 active:scale-[0.98];
+    @apply inline-flex items-center justify-center rounded-2xl border-2 bg-white px-6 py-4 font-semibold transition active:scale-[0.98];
+    border-color: var(--brand-border);
+    color: var(--brand-muted);
+    font-size: var(--brand-font-size-base);
   }
 
-  .table-badge {
-    @apply inline-block rounded-full bg-cafe-700 px-5 py-2 text-sm font-bold tracking-wide text-white shadow-md;
+  .order-btn-secondary:hover {
+    background-color: var(--brand-bg);
   }
 
   .table-badge-sm {
-    @apply flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-cafe-700 text-sm font-bold text-white shadow-md;
+    @apply flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold shadow-md;
+    background-color: var(--brand-primary);
+    color: var(--brand-button-text);
   }
 
   .order-category {
-    @apply mb-3 text-xs font-bold uppercase tracking-widest text-cafe-500;
+    @apply mb-3 text-xs font-bold uppercase tracking-widest;
+    color: var(--brand-subtle);
   }
 
   .menu-item-card {
-    @apply flex w-full items-start gap-4 rounded-2xl border border-cafe-200/80 bg-white p-4 text-left shadow-sm transition hover:border-cafe-400 hover:shadow-md active:scale-[0.99];
+    @apply flex w-full items-start gap-4 rounded-2xl border p-4 text-left shadow-sm transition active:scale-[0.99];
+    border-color: color-mix(in srgb, var(--brand-border) 80%, transparent);
+    background-color: var(--brand-surface);
+  }
+
+  .menu-item-card:hover {
+    border-color: var(--brand-accent);
   }
 
   .menu-item-image {
-    @apply h-20 w-20 shrink-0 rounded-xl bg-cafe-100 object-cover;
+    @apply h-20 w-20 shrink-0 rounded-xl object-cover;
+    background-color: var(--brand-bg-top);
   }
 
   .menu-price {
-    @apply shrink-0 rounded-xl bg-cafe-100 px-3 py-1.5 text-sm font-bold text-cafe-800;
+    @apply shrink-0 rounded-xl px-3 py-1.5 text-sm font-bold;
+    background-color: var(--brand-bg-top);
+    color: var(--brand-muted);
   }
 
   .cart-sheet {
-    @apply fixed bottom-0 left-0 right-0 border-t border-cafe-200 bg-white/95 p-5 shadow-[0_-8px_30px_rgba(92,59,44,0.12)] backdrop-blur-md;
+    @apply order-footer fixed bottom-0 left-0 right-0 p-5 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] backdrop-blur-md;
   }
 
   .cart-line {
-    @apply flex items-center justify-between rounded-2xl bg-cafe-50 px-4 py-3;
+    @apply flex items-center justify-between rounded-2xl px-4 py-3;
+    background-color: var(--brand-bg);
   }
 
   .qty-controls {
@@ -90,14 +189,54 @@
   }
 
   .qty-btn {
-    @apply flex h-9 w-9 items-center justify-center rounded-full bg-cafe-200 text-lg font-bold text-cafe-800 transition active:scale-95;
+    @apply flex h-9 w-9 items-center justify-center rounded-full text-lg font-bold transition active:scale-95;
+    background-color: var(--brand-border);
+    color: var(--brand-muted);
   }
 
   .qty-btn-plus {
-    @apply bg-cafe-700 text-white;
+    background-color: var(--brand-primary);
+    color: var(--brand-button-text);
   }
 
   .success-check {
     @apply mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-4xl text-green-700;
+  }
+
+  .text-brand-heading {
+    color: var(--brand-heading);
+  }
+
+  .text-brand-muted {
+    color: var(--brand-muted);
+  }
+
+  .text-brand-subtle {
+    color: var(--brand-subtle);
+  }
+
+  .bg-brand-surface {
+    background-color: var(--brand-surface);
+  }
+
+  .bg-brand-top {
+    background-color: var(--brand-bg-top);
+  }
+
+  .border-brand {
+    border-color: var(--brand-border);
+  }
+
+  .nav-active {
+    background-color: var(--brand-primary);
+    color: var(--brand-button-text);
+  }
+
+  .nav-inactive {
+    color: var(--brand-muted);
+  }
+
+  .nav-inactive:hover {
+    background-color: var(--brand-bg-top);
   }
 }

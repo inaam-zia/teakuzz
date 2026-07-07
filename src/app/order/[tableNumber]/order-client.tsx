@@ -3,22 +3,30 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatPrice } from "@/lib/format";
 import { normalizePhone, isValidPhone } from "@/lib/phone";
+import CafeLogo from "@/components/cafe-logo";
+import type { CafeBranding } from "@/lib/branding-types";
 import type { CartItem, MenuCategory, MenuItem } from "@/lib/types";
+
+type SavedCustomer = {
+  name: string;
+  phone: string;
+};
 
 type Props = {
   tableNumber: number;
-  cafeName: string;
+  branding: CafeBranding;
+  savedCustomer?: SavedCustomer | null;
 };
 
 type Step = "menu" | "done";
 
-export default function OrderClient({ tableNumber, cafeName }: Props) {
+export default function OrderClient({ tableNumber, branding, savedCustomer }: Props) {
   const [step, setStep] = useState<Step>("menu");
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerName, setCustomerName] = useState(savedCustomer?.name ?? "");
+  const [customerPhone, setCustomerPhone] = useState(savedCustomer?.phone ?? "");
   const [checkoutError, setCheckoutError] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -26,6 +34,8 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
   const [showCart, setShowCart] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [lastOrderTotal, setLastOrderTotal] = useState(0);
+
+  const hasSavedDetails = Boolean(customerName.trim() && customerPhone.trim());
 
   useEffect(() => {
     fetch("/api/menu")
@@ -94,27 +104,36 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
 
   function openCheckout() {
     setCheckoutError("");
+    if (hasSavedDetails) {
+      placeOrder();
+      return;
+    }
     setShowCheckout(true);
   }
 
-  async function submitOrder(e: React.FormEvent) {
-    e.preventDefault();
+  async function placeOrder(override?: { name: string; phone: string }) {
     if (!cart.length) return;
+
+    const name = (override?.name ?? customerName).trim();
+    const phone = normalizePhone(override?.phone ?? customerPhone);
 
     setCheckoutError("");
 
-    if (!customerName.trim()) {
+    if (!name) {
       setCheckoutError("Please enter your name");
+      setShowCheckout(true);
       return;
     }
 
-    if (!customerPhone.trim()) {
+    if (!phone) {
       setCheckoutError("Please enter your phone number");
+      setShowCheckout(true);
       return;
     }
 
-    if (!isValidPhone(customerPhone)) {
+    if (!isValidPhone(phone)) {
       setCheckoutError("Please enter a valid 10-digit phone number");
+      setShowCheckout(true);
       return;
     }
 
@@ -126,8 +145,8 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         tableNumber,
-        customerName: customerName.trim(),
-        customerPhone: normalizePhone(customerPhone),
+        customerName: name,
+        customerPhone: phone,
         items: cart.map((c) => ({ menuItemId: c.menuItemId, quantity: c.quantity })),
       }),
     });
@@ -140,6 +159,8 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
       return;
     }
 
+    setCustomerName(name);
+    setCustomerPhone(phone);
     setLastOrderTotal(cartTotal);
     setStep("done");
     setCart([]);
@@ -147,10 +168,13 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
     setShowCheckout(false);
   }
 
+  async function submitOrder(e: React.FormEvent) {
+    e.preventDefault();
+    await placeOrder();
+  }
+
   function orderAgain() {
     setStep("menu");
-    setCustomerName("");
-    setCustomerPhone("");
     setCart([]);
     setError("");
     setCheckoutError("");
@@ -172,8 +196,13 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
             Total: <strong className="text-cafe-900">{formatPrice(lastOrderTotal)}</strong>
           </p>
           <button onClick={orderAgain} className="order-btn mt-6 w-full">
-            Place another order
+            Add more items
           </button>
+          {hasSavedDetails && (
+            <p className="mt-3 text-xs text-cafe-500">
+              Your details are saved for this visit — no need to enter them again.
+            </p>
+          )}
         </div>
       </main>
     );
@@ -184,11 +213,14 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
       <header className="order-header sticky top-0 z-10 px-5 py-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-cafe-500">
-              {cafeName}
-            </p>
-            <h1 className="mt-1 text-xl font-bold text-cafe-900">Table {tableNumber}</h1>
-            <p className="mt-0.5 text-sm text-cafe-600">Tap items to add to your order</p>
+            <CafeLogo branding={branding} size="sm" />
+            <h1 className="mt-2 text-xl font-bold text-brand-heading">Table {tableNumber}</h1>
+            <p className="mt-0.5 text-sm text-brand-muted">Tap items to add to your order</p>
+            {hasSavedDetails && (
+              <p className="mt-1 text-xs text-brand-subtle">
+                Ordering as <strong className="text-brand-muted">{customerName}</strong>
+              </p>
+            )}
           </div>
           <span className="table-badge-sm">{cartCount > 0 ? cartCount : "☕"}</span>
         </div>
@@ -322,8 +354,16 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
               <p className="text-sm text-cafe-500">Table {tableNumber}</p>
 
               {!showCheckout ? (
-                <button onClick={openCheckout} className="order-btn w-full">
-                  Place order · {formatPrice(cartTotal)}
+                <button
+                  onClick={openCheckout}
+                  disabled={submitting}
+                  className="order-btn w-full"
+                >
+                  {submitting
+                    ? "Sending order…"
+                    : hasSavedDetails
+                      ? `Place order · ${formatPrice(cartTotal)}`
+                      : `Continue · ${formatPrice(cartTotal)}`}
                 </button>
               ) : (
                 <form onSubmit={submitOrder} className="space-y-4 rounded-2xl border border-cafe-200 bg-cafe-50/80 p-4">

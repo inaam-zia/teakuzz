@@ -19,6 +19,7 @@ export type CafeTable = {
   id: string;
   table_number: number;
   enabled: boolean;
+  session_id?: string;
   created_at: string;
 };
 

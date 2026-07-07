@@ -10,3 +10,8 @@ export function getSiteUrl(): string {
 export function getOrderUrl(tableNumber: number): string {
   return `${getSiteUrl()}/order/${tableNumber}`;
 }
+
+/** QR codes should point here — sets a scan cookie then redirects to order page. */
+export function getScanUrl(tableNumber: number): string {
+  return `${getSiteUrl()}/scan/${tableNumber}`;
+}

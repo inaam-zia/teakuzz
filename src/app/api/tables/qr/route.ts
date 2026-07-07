@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import QRCode from "qrcode";
 import { isAdminAuthenticated } from "@/lib/auth";
-import { getOrderUrl } from "@/lib/site-url";
+import { getScanUrl } from "@/lib/site-url";
 
 export async function GET(request: Request) {
   if (!isAdminAuthenticated()) {
@@ -16,8 +16,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Invalid table number" }, { status: 400 });
   }
 
-  const orderUrl = getOrderUrl(tableNumber);
-  const png = await QRCode.toBuffer(orderUrl, {
+  const scanUrl = getScanUrl(tableNumber);
+  const png = await QRCode.toBuffer(scanUrl, {
     width: 400,
     margin: 2,
     color: { dark: "#5c3b2c", light: "#ffffff" },

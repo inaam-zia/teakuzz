@@ -61,10 +61,22 @@ create table if not exists cafe_tables (
   id uuid primary key default gen_random_uuid(),
   table_number int not null unique,
   enabled boolean default true,
+  session_id uuid default gen_random_uuid(),
   created_at timestamptz default now()
 );
 
 create index if not exists cafe_tables_number_idx on cafe_tables (table_number);
+
+create table if not exists cafe_settings (
+  id int primary key default 1 check (id = 1),
+  app_name text not null default 'Teakkuzz Cafe',
+  logo_url text,
+  tagline text default 'Scan the QR code on your table to browse the menu and place an order.',
+  theme jsonb not null default '{}'::jsonb,
+  updated_at timestamptz default now()
+);
+
+insert into cafe_settings (id, app_name) values (1, 'Teakkuzz Cafe') on conflict (id) do nothing;
 
 -- Teakkuzz Cafe menu (skip if you already have items)
 insert into menu_categories (name, sort_order)

@@ -35,11 +35,11 @@ function parseTables(args) {
 }
 
 async function generateTable(tableNumber) {
-  const orderUrl = `${baseUrl.replace(/\/$/, "")}/order/${tableNumber}`;
+  const scanUrl = `${baseUrl.replace(/\/$/, "")}/scan/${tableNumber}`;
   const pngPath = join(outDir, `table-${tableNumber}.png`);
   const htmlPath = join(outDir, `table-${tableNumber}-print.html`);
 
-  await QRCode.toFile(pngPath, orderUrl, {
+  await QRCode.toFile(pngPath, scanUrl, {
     width: 400,
     margin: 2,
     color: { dark: "#5c3b2c", light: "#ffffff" },
@@ -82,14 +82,14 @@ async function generateTable(tableNumber) {
     <h1>Table ${tableNumber}</h1>
     <p>Scan to order</p>
     <img src="./table-${tableNumber}.png" alt="QR code for table ${tableNumber}" />
-    <p class="url">${orderUrl}</p>
+    <p class="url">${scanUrl}</p>
   </div>
 </body>
 </html>`;
 
   writeFileSync(htmlPath, html);
 
-  return { tableNumber, orderUrl, pngPath, htmlPath };
+  return { tableNumber, scanUrl, pngPath, htmlPath };
 }
 
 const tables = parseTables(process.argv);

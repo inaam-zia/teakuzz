@@ -8,6 +8,7 @@ const links = [
   { href: "/admin/orders", label: "Live orders" },
   { href: "/admin/menu", label: "Menu" },
   { href: "/admin/tables", label: "Table QR" },
+  { href: "/admin/branding", label: "Appearance" },
   { href: "/admin/history", label: "History" },
 ];
 
@@ -26,10 +27,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen">
-      <header className="border-b border-cafe-200 bg-white">
+      <header className="border-b border-brand bg-brand-surface">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-          <h1 className="text-lg font-bold text-cafe-900">Cafe Admin</h1>
-          <button onClick={logout} className="text-sm text-cafe-600 hover:text-cafe-900">
+          <h1 className="text-lg font-bold text-brand-heading">Cafe Admin</h1>
+          <button onClick={logout} className="text-sm text-brand-muted hover:text-brand-heading">
             Log out
           </button>
         </div>
@@ -41,9 +42,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 key={link.href}
                 href={link.href}
                 className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition ${
-                  active
-                    ? "bg-cafe-700 text-white"
-                    : "text-cafe-700 hover:bg-cafe-100"
+                  active ? "nav-active" : "nav-inactive"
                 }`}
               >
                 {link.label}
