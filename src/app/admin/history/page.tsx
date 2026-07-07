@@ -137,6 +137,9 @@ export default function HistoryPage() {
                   {order.customer_phone && (
                     <p className="text-sm text-cafe-500">+91 {order.customer_phone}</p>
                   )}
+                  {order.customer_email && (
+                    <p className="text-sm text-cafe-500">{order.customer_email}</p>
+                  )}
                   <p className="text-sm text-cafe-500">{formatDate(order.created_at)}</p>
                 </div>
                 <div className="text-right">

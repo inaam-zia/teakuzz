@@ -25,6 +25,7 @@ create table if not exists orders (
   table_number int not null,
   customer_name text,
   customer_phone text,
+  customer_email text,
   status text default 'new' check (status in ('new', 'preparing', 'served', 'cancelled')),
   total numeric(10, 2) not null,
   created_at timestamptz default now()
@@ -42,6 +43,7 @@ create index if not exists orders_created_at_idx on orders (created_at desc);
 create index if not exists orders_table_number_idx on orders (table_number);
 create index if not exists orders_status_idx on orders (status);
 create index if not exists orders_customer_phone_idx on orders (customer_phone);
+create index if not exists orders_customer_email_idx on orders (customer_email);
 
 create table if not exists otp_verifications (
   id uuid primary key default gen_random_uuid(),

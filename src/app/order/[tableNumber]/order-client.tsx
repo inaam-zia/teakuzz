@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { formatPrice } from "@/lib/format";
+import { isValidEmail, normalizeEmail } from "@/lib/email";
 import { normalizePhone, isValidPhone } from "@/lib/phone";
 import type { CartItem, MenuCategory, MenuItem } from "@/lib/types";
 
@@ -20,6 +21,7 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -109,6 +111,12 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
       return;
     }
 
+    const emailTrimmed = customerEmail.trim();
+    if (emailTrimmed && !isValidEmail(emailTrimmed)) {
+      setCheckoutError("Please enter a valid email or leave it blank");
+      return;
+    }
+
     setSubmitting(true);
     setError("");
 
@@ -119,6 +127,7 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
         tableNumber,
         customerName: customerName.trim(),
         customerPhone: normalizePhone(customerPhone),
+        customerEmail: emailTrimmed ? normalizeEmail(emailTrimmed) : undefined,
         items: cart.map((c) => ({ menuItemId: c.menuItemId, quantity: c.quantity })),
       }),
     });
@@ -142,6 +151,7 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
     setStep("menu");
     setCustomerName("");
     setCustomerPhone("");
+    setCustomerEmail("");
     setCart([]);
     setError("");
     setCheckoutError("");
@@ -165,8 +175,11 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
           <button onClick={orderAgain} className="order-btn-secondary mt-6 w-full">
             Place another order
           </button>
-          <Link href="/my-orders" className="order-btn-secondary mt-3 inline-flex w-full">
-            View my past orders
+          <Link href="/my-orders" className="order-btn mt-3 inline-flex w-full">
+            View this order
+          </Link>
+          <Link href="/my-orders?all=1" className="order-btn-secondary mt-3 inline-flex w-full text-sm">
+            Look up all past orders
           </Link>
         </div>
       </main>
@@ -344,6 +357,25 @@ export default function OrderClient({ tableNumber, cafeName }: Props) {
                         required
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="checkout-email" className="order-label">
+                      Email <span className="font-normal text-cafe-400">(optional)</span>
+                    </label>
+                    <input
+                      id="checkout-email"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={customerEmail}
+                      onChange={(e) => setCustomerEmail(e.target.value)}
+                      className="order-input"
+                      autoComplete="email"
+                    />
+                    <p className="mt-1.5 text-xs leading-relaxed text-cafe-500">
+                      Add your email to look up past orders later — we&apos;ll send a free
+                      verification code (no SMS charges).
+                    </p>
                   </div>
 
                   {checkoutError && (

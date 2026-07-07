@@ -21,6 +21,7 @@ export type Order = {
   table_number: number;
   customer_name: string | null;
   customer_phone: string | null;
+  customer_email: string | null;
   status: OrderStatus;
   total: number;
   created_at: string;
@@ -49,5 +50,6 @@ export type PlaceOrderPayload = {
   tableNumber: number;
   customerName: string;
   customerPhone: string;
+  customerEmail?: string;
   items: { menuItemId: string; quantity: number }[];
 };

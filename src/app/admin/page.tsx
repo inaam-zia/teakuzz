@@ -70,6 +70,7 @@ export default function AdminDashboard() {
                   <p className="text-sm text-cafe-500">
                     {order.customer_name || "Guest"}
                     {order.customer_phone && ` · +91 ${order.customer_phone}`}
+                    {order.customer_email && ` · ${order.customer_email}`}
                     {" · "}
                     {formatDateShort(order.created_at)}
                   </p>

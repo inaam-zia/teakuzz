@@ -6,6 +6,8 @@ import { formatSupabaseError } from "@/lib/supabase-errors";
 const MIGRATION_SQL = `
 alter table orders add column if not exists customer_phone text;
 create index if not exists orders_customer_phone_idx on orders (customer_phone);
+alter table orders add column if not exists customer_email text;
+create index if not exists orders_customer_email_idx on orders (customer_email);
 create table if not exists otp_verifications (
   id uuid primary key default gen_random_uuid(),
   phone text not null,
@@ -60,12 +62,16 @@ export async function GET() {
   try {
     const supabase = createServerClient();
     const { error: phoneError } = await supabase.from("orders").select("customer_phone").limit(1);
+    const { error: emailError } = await supabase.from("orders").select("customer_email").limit(1);
     const { error: otpError } = await supabase.from("otp_verifications").select("id").limit(1);
 
     const needsMigration =
       (!!phoneError &&
         (phoneError.message.includes("customer_phone") ||
           phoneError.message.includes("schema cache"))) ||
+      (!!emailError &&
+        (emailError.message.includes("customer_email") ||
+          emailError.message.includes("schema cache"))) ||
       (!!otpError &&
         (otpError.message.includes("otp_verifications") ||
           otpError.message.includes("schema cache")));

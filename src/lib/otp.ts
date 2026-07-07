@@ -18,9 +18,9 @@ export function generateOtpCode(): string {
   return String(randomInt(100000, 999999));
 }
 
-export function hashOtp(phone: string, code: string): string {
+export function hashOtp(identifier: string, code: string): string {
   return createHash("sha256")
-    .update(`${phone}:${code}:${getOtpSecret()}`)
+    .update(`${identifier}:${code}:${getOtpSecret()}`)
     .digest("hex");
 }
 

@@ -9,7 +9,15 @@ import {
 } from "@/lib/otp";
 import { getLatestOtp, saveOtp } from "@/lib/otp-store";
 import { isValidPhone, normalizePhone } from "@/lib/phone";
-import { isOtpDevMode, isSmsConfigured, sendOtpSms } from "@/lib/sms";
+import { isValidEmail, normalizeEmail } from "@/lib/email";
+import { isEmailConfigured, isOtpDevMode, sendOtpEmail } from "@/lib/email-send";
+import { isOtpDevMode as isSmsDevMode, isSmsConfigured, sendOtpSms } from "@/lib/sms";
+
+type SendBody = {
+  channel?: "phone" | "email";
+  phone?: string;
+  email?: string;
+};
 
 export async function POST(request: Request) {
   if (!isSupabaseConfigured()) {
@@ -20,7 +28,67 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = (await request.json()) as { phone?: string };
+    const body = (await request.json()) as SendBody;
+    const channel = body.channel || (body.email ? "email" : "phone");
+
+    if (channel === "email") {
+      const email = normalizeEmail(body.email || "");
+      if (!isValidEmail(email)) {
+        return NextResponse.json({ error: "Please enter a valid email" }, { status: 400 });
+      }
+
+      if (!isEmailConfigured() && !isOtpDevMode()) {
+        return NextResponse.json(
+          {
+            error:
+              "Email OTP is not set up. Add RESEND_API_KEY to .env.local (free at resend.com).",
+          },
+          { status: 503 }
+        );
+      }
+
+      const supabase = createServerClient();
+      const latest = await getLatestOtp(supabase, email);
+
+      if (!canResendOtp(latest?.created_at ?? null)) {
+        return NextResponse.json(
+          {
+            error: `Please wait ${resendCooldownSeconds(latest?.created_at ?? null)} seconds before requesting another code`,
+          },
+          { status: 429 }
+        );
+      }
+
+      const code = generateOtpCode();
+      const saved = await saveOtp(supabase, email, code, getOtpExpiry());
+
+      if (!saved.ok) {
+        if (saved.error.includes("otp_verifications")) {
+          return NextResponse.json(
+            {
+              error:
+                "OTP table missing. Run supabase/add-otp-verifications.sql in Supabase SQL editor.",
+            },
+            { status: 503 }
+          );
+        }
+        return NextResponse.json({ error: formatSupabaseError(saved.error) }, { status: 500 });
+      }
+
+      const mail = await sendOtpEmail(email, code);
+      if (!mail.ok) {
+        return NextResponse.json({ error: mail.error }, { status: 502 });
+      }
+
+      const response: { ok: true; devCode?: string } = { ok: true };
+      if (isOtpDevMode() && !isEmailConfigured()) {
+        response.devCode = code;
+      }
+
+      return NextResponse.json(response);
+    }
+
+    // Phone channel
     const phone = normalizePhone(body.phone || "");
 
     if (!isValidPhone(phone)) {
@@ -30,11 +98,12 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!isSmsConfigured() && !isOtpDevMode()) {
+    if (!isSmsConfigured() && !isSmsDevMode()) {
       return NextResponse.json(
         {
           error:
-            "SMS is not set up yet. Add FAST2SMS_API_KEY or MSG91_AUTH_KEY to enable OTP.",
+            "Phone OTP needs a paid SMS provider. Use email instead (free), or add your email when ordering next time.",
+          useEmail: true,
         },
         { status: 503 }
       );
@@ -60,7 +129,7 @@ export async function POST(request: Request) {
         return NextResponse.json(
           {
             error:
-              "OTP table missing. Run supabase/add-otp-verifications.sql in your Supabase SQL editor.",
+              "OTP table missing. Run supabase/add-otp-verifications.sql in Supabase SQL editor.",
           },
           { status: 503 }
         );
@@ -70,11 +139,11 @@ export async function POST(request: Request) {
 
     const sms = await sendOtpSms(phone, code);
     if (!sms.ok) {
-      return NextResponse.json({ error: sms.error }, { status: 502 });
+      return NextResponse.json({ error: sms.error, useEmail: true }, { status: 502 });
     }
 
     const response: { ok: true; devCode?: string } = { ok: true };
-    if (isOtpDevMode() && !isSmsConfigured()) {
+    if (isSmsDevMode() && !isSmsConfigured()) {
       response.devCode = code;
     }
 

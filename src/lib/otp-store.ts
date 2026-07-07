@@ -17,14 +17,15 @@ export type OtpVerifyResult =
   | { status: "too_many_attempts" }
   | { status: "not_found" };
 
+/** DB column is `phone` but stores phone digits or normalized email */
 export async function getLatestOtp(
   supabase: SupabaseClient,
-  phone: string
+  identifier: string
 ): Promise<OtpRow | null> {
   const { data, error } = await supabase
     .from("otp_verifications")
     .select("*")
-    .eq("phone", phone)
+    .eq("phone", identifier)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -35,15 +36,15 @@ export async function getLatestOtp(
 
 export async function saveOtp(
   supabase: SupabaseClient,
-  phone: string,
+  identifier: string,
   code: string,
   expiresAt: Date
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  await supabase.from("otp_verifications").delete().eq("phone", phone);
+  await supabase.from("otp_verifications").delete().eq("phone", identifier);
 
   const { error } = await supabase.from("otp_verifications").insert({
-    phone,
-    code_hash: hashOtp(phone, code),
+    phone: identifier,
+    code_hash: hashOtp(identifier, code),
     expires_at: expiresAt.toISOString(),
     attempts: 0,
   });
@@ -57,10 +58,10 @@ export async function saveOtp(
 
 export async function verifyStoredOtp(
   supabase: SupabaseClient,
-  phone: string,
+  identifier: string,
   code: string
 ): Promise<OtpVerifyResult> {
-  const row = await getLatestOtp(supabase, phone);
+  const row = await getLatestOtp(supabase, identifier);
   if (!row) return { status: "not_found" };
 
   if (new Date(row.expires_at) < new Date()) {
@@ -71,7 +72,7 @@ export async function verifyStoredOtp(
     return { status: "too_many_attempts" };
   }
 
-  if (hashOtp(phone, code) !== row.code_hash) {
+  if (hashOtp(identifier, code) !== row.code_hash) {
     await supabase
       .from("otp_verifications")
       .update({ attempts: row.attempts + 1 })

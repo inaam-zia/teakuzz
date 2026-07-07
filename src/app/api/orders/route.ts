@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/supabase-errors";
 import { insertOrder } from "@/lib/insert-order";
-import { isAdminAuthenticated } from "@/lib/auth";
+import { isAdminAuthenticated, getRecentOrderCookieConfig } from "@/lib/auth";
+import { normalizeEmail, isValidEmail } from "@/lib/email";
 import type { PlaceOrderPayload } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -88,10 +90,15 @@ export async function POST(request: Request) {
     }
 
     if (phoneDigits.length < 10 || phoneDigits.length > 13) {
-      return NextResponse.json(
-        { error: "Invalid phone number" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid phone number" }, { status: 400 });
+    }
+
+    const emailRaw = body.customerEmail?.trim();
+    const customerEmail =
+      emailRaw && isValidEmail(emailRaw) ? normalizeEmail(emailRaw) : null;
+
+    if (emailRaw && !customerEmail) {
+      return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
     }
 
     const menuIds = body.items.map((i) => i.menuItemId);
@@ -137,7 +144,8 @@ export async function POST(request: Request) {
     const { data: order, error: orderError } = await insertOrder(supabase, {
       table_number: body.tableNumber,
       customer_name: body.customerName.trim(),
-      customer_phone: phoneDigits || null,
+      customer_phone: phoneDigits,
+      customer_email: customerEmail,
       total,
       status: "new",
     });
@@ -159,6 +167,8 @@ export async function POST(request: Request) {
     if (itemsError) {
       return NextResponse.json({ error: formatSupabaseError(itemsError) }, { status: 500 });
     }
+
+    cookies().set(getRecentOrderCookieConfig(order.id));
 
     return NextResponse.json({ orderId: order.id, total });
   } catch (err) {
