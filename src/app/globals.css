@@ -175,6 +175,30 @@
     color: var(--brand-muted);
   }
 
+  .menu-item-qty-badge {
+    @apply shrink-0 rounded-xl px-2.5 py-1 text-xs font-bold;
+    background-color: var(--brand-primary);
+    color: var(--brand-button-text);
+  }
+
+  .menu-item-card--in-cart {
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand-primary) 30%, transparent);
+  }
+
+  .menu-search-input {
+    @apply w-full rounded-2xl border py-3 pl-10 pr-10 outline-none transition focus:ring-2;
+    border-color: var(--brand-border);
+    background-color: var(--brand-surface);
+    font-size: var(--brand-font-size-small);
+    color: var(--brand-text);
+  }
+
+  .menu-search-input:focus {
+    border-color: var(--brand-primary);
+    --tw-ring-color: color-mix(in srgb, var(--brand-primary) 20%, transparent);
+  }
+
   .cart-sheet {
     @apply order-footer fixed bottom-0 left-0 right-0 p-5 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] backdrop-blur-md;
   }

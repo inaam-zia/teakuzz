@@ -21,6 +21,43 @@ type Props = {
 
 type Step = "menu" | "done";
 
+function MenuItemButton({
+  item,
+  quantity,
+  onAdd,
+}: {
+  item: MenuItem;
+  quantity: number;
+  onAdd: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onAdd}
+      className={`menu-item-card group ${quantity > 0 ? "menu-item-card--in-cart" : ""}`}
+    >
+      {item.image_url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={item.image_url} alt={item.name} className="menu-item-image" />
+      ) : null}
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold text-cafe-900">{item.name}</p>
+        {item.description && (
+          <p className="mt-1 text-sm leading-relaxed text-cafe-500">{item.description}</p>
+        )}
+      </div>
+      <div className="flex shrink-0 flex-col items-end gap-1.5">
+        <span className="menu-price">{formatPrice(item.price)}</span>
+        {quantity > 0 ? (
+          <span className="menu-item-qty-badge" aria-label={`${quantity} in cart`}>
+            ×{quantity}
+          </span>
+        ) : null}
+      </div>
+    </button>
+  );
+}
+
 export default function OrderClient({ tableNumber, branding, savedCustomer }: Props) {
   const [step, setStep] = useState<Step>("menu");
   const [categories, setCategories] = useState<MenuCategory[]>([]);
@@ -35,8 +72,9 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
   const [showCart, setShowCart] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [hasActiveOrders, setHasActiveOrders] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const hasSavedDetails = Boolean(customerName.trim() && customerPhone.trim());
+  const hasSavedDetails = Boolean(customerName.trim() && normalizePhone(customerPhone));
 
   useEffect(() => {
     fetch("/api/menu")
@@ -80,6 +118,44 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
     return grouped;
   }, [items]);
 
+  const categoryNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const cat of categories) {
+      map.set(cat.id, cat.name);
+    }
+    return map;
+  }, [categories]);
+
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+
+  const visibleItemsByCategory = useMemo(() => {
+    if (!normalizedSearch) return itemsByCategory;
+
+    const filtered = new Map<string, MenuItem[]>();
+    for (const item of items) {
+      const categoryName = categoryNameById.get(item.category_id || "") || "";
+      const haystack = `${item.name} ${item.description || ""} ${categoryName}`.toLowerCase();
+      if (!haystack.includes(normalizedSearch)) continue;
+
+      const key = item.category_id || "other";
+      if (!filtered.has(key)) filtered.set(key, []);
+      filtered.get(key)!.push(item);
+    }
+    return filtered;
+  }, [items, itemsByCategory, categoryNameById, normalizedSearch]);
+
+  const hasVisibleMenuItems = useMemo(() => {
+    return Array.from(visibleItemsByCategory.values()).some((catItems) => catItems.length > 0);
+  }, [visibleItemsByCategory]);
+
+  const cartQtyById = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const line of cart) {
+      map.set(line.menuItemId, line.quantity);
+    }
+    return map;
+  }, [cart]);
+
   const cartTotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
 
@@ -102,9 +178,7 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
     setCart((prev) =>
       prev
         .map((c) =>
-          c.menuItemId === menuItemId
-            ? { ...c, quantity: c.quantity + delta }
-            : c
+          c.menuItemId === menuItemId ? { ...c, quantity: c.quantity + delta } : c
         )
         .filter((c) => c.quantity > 0)
     );
@@ -113,7 +187,7 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
   function openCheckout() {
     setCheckoutError("");
     if (hasSavedDetails) {
-      placeOrder();
+      void placeOrder();
       return;
     }
     setShowCheckout(true);
@@ -225,73 +299,86 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
             View order status →
           </button>
         )}
+
+        {!loading && items.length > 0 && (
+          <div className="relative mt-4">
+            <svg
+              className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-cafe-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+              aria-hidden
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z"
+              />
+            </svg>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search menu…"
+              className="menu-search-input"
+              aria-label="Search menu"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full px-2 py-0.5 text-sm font-medium text-cafe-500 hover:text-cafe-700"
+                aria-label="Clear search"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        )}
       </header>
 
       {loading ? (
         <p className="px-5 py-8 text-center text-cafe-500">Loading menu…</p>
       ) : error && !items.length ? (
         <p className="px-5 py-8 text-center text-red-600">{error}</p>
+      ) : normalizedSearch && !hasVisibleMenuItems ? (
+        <p className="px-5 py-8 text-center text-cafe-500">
+          No items match &ldquo;{searchQuery.trim()}&rdquo;
+        </p>
       ) : (
         <div className="space-y-7 px-5 py-2">
           {categories.map((cat) => {
-            const catItems = itemsByCategory.get(cat.id);
+            const catItems = visibleItemsByCategory.get(cat.id);
             if (!catItems?.length) return null;
             return (
               <section key={cat.id}>
                 <h2 className="order-category">{cat.name}</h2>
                 <div className="space-y-3">
                   {catItems.map((item) => (
-                    <button
+                    <MenuItemButton
                       key={item.id}
-                      onClick={() => addToCart(item)}
-                      className="menu-item-card group"
-                    >
-                      {item.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={item.image_url}
-                          alt={item.name}
-                          className="menu-item-image"
-                        />
-                      ) : null}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-cafe-900">{item.name}</p>
-                        {item.description && (
-                          <p className="mt-1 text-sm leading-relaxed text-cafe-500">
-                            {item.description}
-                          </p>
-                        )}
-                      </div>
-                      <span className="menu-price">{formatPrice(item.price)}</span>
-                    </button>
+                      item={item}
+                      quantity={cartQtyById.get(item.id) ?? 0}
+                      onAdd={() => addToCart(item)}
+                    />
                   ))}
                 </div>
               </section>
             );
           })}
 
-          {itemsByCategory.get("other")?.length ? (
+          {visibleItemsByCategory.get("other")?.length ? (
             <section>
               <h2 className="order-category">Other</h2>
               <div className="space-y-3">
-                {itemsByCategory.get("other")!.map((item) => (
-                  <button key={item.id} onClick={() => addToCart(item)} className="menu-item-card">
-                    {item.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={item.image_url}
-                        alt={item.name}
-                        className="menu-item-image"
-                      />
-                    ) : null}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold">{item.name}</p>
-                      {item.description && (
-                        <p className="mt-1 text-sm text-cafe-500">{item.description}</p>
-                      )}
-                    </div>
-                    <span className="menu-price">{formatPrice(item.price)}</span>
-                  </button>
+                {visibleItemsByCategory.get("other")!.map((item) => (
+                  <MenuItemButton
+                    key={item.id}
+                    item={item}
+                    quantity={cartQtyById.get(item.id) ?? 0}
+                    onAdd={() => addToCart(item)}
+                  />
                 ))}
               </div>
             </section>
@@ -303,6 +390,7 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
         <div className="cart-sheet">
           {!showCart ? (
             <button
+              type="button"
               onClick={() => setShowCart(true)}
               className="order-btn mx-auto flex w-full max-w-lg items-center justify-between"
             >
@@ -314,9 +402,11 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold text-cafe-900">Your order</h3>
                 <button
+                  type="button"
                   onClick={() => {
                     setShowCart(false);
                     setShowCheckout(false);
+                    setCheckoutError("");
                   }}
                   className="text-sm font-medium text-cafe-600"
                 >
@@ -333,6 +423,7 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
                     </div>
                     <div className="qty-controls">
                       <button
+                        type="button"
                         onClick={() => updateQty(item.menuItemId, -1)}
                         className="qty-btn"
                         aria-label="Decrease quantity"
@@ -341,6 +432,7 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
                       </button>
                       <span className="w-5 text-center font-semibold">{item.quantity}</span>
                       <button
+                        type="button"
                         onClick={() => updateQty(item.menuItemId, 1)}
                         className="qty-btn qty-btn-plus"
                         aria-label="Increase quantity"
@@ -356,6 +448,7 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
 
               {!showCheckout ? (
                 <button
+                  type="button"
                   onClick={openCheckout}
                   disabled={submitting}
                   className="order-btn w-full"
@@ -367,7 +460,10 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
                       : `Continue · ${formatPrice(cartTotal)}`}
                 </button>
               ) : (
-                <form onSubmit={submitOrder} className="space-y-4 rounded-2xl border border-cafe-200 bg-cafe-50/80 p-4">
+                <form
+                  onSubmit={submitOrder}
+                  className="space-y-4 rounded-2xl border border-cafe-200 bg-cafe-50/80 p-4"
+                >
                   <p className="text-sm font-semibold text-cafe-800">Almost done — your details</p>
 
                   <div>
@@ -409,9 +505,7 @@ export default function OrderClient({ tableNumber, branding, savedCustomer }: Pr
                     </div>
                   </div>
 
-                  {checkoutError && (
-                    <p className="text-sm text-red-600">{checkoutError}</p>
-                  )}
+                  {checkoutError && <p className="text-sm text-red-600">{checkoutError}</p>}
 
                   <button type="submit" disabled={submitting} className="order-btn w-full">
                     {submitting ? "Sending order…" : `Confirm · ${formatPrice(cartTotal)}`}
