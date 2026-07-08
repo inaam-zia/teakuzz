@@ -13,6 +13,7 @@ const adminFontStyle = {
 const links = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/orders", label: "Live orders" },
+  { href: "/admin/customers", label: "Customers" },
   { href: "/admin/menu", label: "Menu" },
   { href: "/admin/offers", label: "Offers" },
   { href: "/admin/tables", label: "Table QR" },

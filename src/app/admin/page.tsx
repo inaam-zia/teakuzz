@@ -38,7 +38,10 @@ function ProductBar({
   maxQuantity: number;
   variant: "star" | "struggle";
 }) {
-  const width = maxQuantity > 0 ? Math.max(8, (item.quantitySold / maxQuantity) * 100) : 8;
+  const width =
+    item.quantitySold > 0 && maxQuantity > 0
+      ? Math.max(8, (item.quantitySold / maxQuantity) * 100)
+      : 0;
 
   return (
     <div className="space-y-1.5">

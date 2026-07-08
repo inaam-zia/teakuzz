@@ -82,7 +82,8 @@
   .input-field {
     @apply w-full rounded-xl border bg-white px-4 py-3 outline-none transition focus:ring-2;
     border-color: var(--brand-border);
-    font-size: var(--brand-font-size-small);
+    /* Keep at least 16px so iOS Safari does not zoom the page on focus. */
+    font-size: max(16px, var(--brand-font-size-small));
     color: var(--brand-text);
   }
 
