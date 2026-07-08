@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatPrice } from "@/lib/format";
+import LazyMenuImage from "@/components/lazy-menu-image";
 import type { MenuCategory, MenuItem } from "@/lib/types";
 
 async function uploadMenuImageFile(file: File): Promise<string> {
@@ -32,6 +33,20 @@ export default function MenuPage() {
     imagePreview: "",
   });
   const [uploading, setUploading] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const query = search.trim().toLowerCase();
+  const filteredItems = useMemo(() => {
+    if (!query) return items;
+    return items.filter((i) => {
+      const cat = categories.find((c) => c.id === i.category_id);
+      return (
+        i.name.toLowerCase().includes(query) ||
+        (i.description?.toLowerCase().includes(query) ?? false) ||
+        (cat?.name.toLowerCase().includes(query) ?? false)
+      );
+    });
+  }, [items, categories, query]);
 
   function loadMenu() {
     fetch("/api/menu")
@@ -216,16 +231,18 @@ export default function MenuPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-cafe-900">Menu</h2>
-          <p className="text-cafe-600">Prices in ₹ — tap category or price to edit</p>
+          <h2 className="text-xl font-bold text-cafe-900 sm:text-2xl">Menu</h2>
+          <p className="text-sm text-cafe-600 sm:text-base">
+            Prices in ₹ — tap category or price to edit
+          </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
           <button
             onClick={() => {
               setShowCategoryForm(!showCategoryForm);
               setShowForm(false);
             }}
-            className="btn-secondary"
+            className="btn-secondary flex-1 sm:flex-none"
           >
             {showCategoryForm ? "Cancel" : "+ Category"}
           </button>
@@ -234,11 +251,35 @@ export default function MenuPage() {
               setShowForm(!showForm);
               setShowCategoryForm(false);
             }}
-            className="btn-primary"
+            className="btn-primary flex-1 sm:flex-none"
           >
             {showForm ? "Cancel" : "+ Add item"}
           </button>
         </div>
+      </div>
+
+      <div className="relative">
+        <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-cafe-400">
+          🔍
+        </span>
+        <input
+          type="search"
+          inputMode="search"
+          placeholder="Search items by name, description or category…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="input-field pl-11"
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full px-2 py-1 text-sm text-cafe-500 hover:text-cafe-800"
+            aria-label="Clear search"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {error && (
@@ -350,10 +391,15 @@ export default function MenuPage() {
         <div className="card py-12 text-center text-cafe-500">
           No menu items yet. Add a category or item to get started.
         </div>
+      ) : query && filteredItems.length === 0 ? (
+        <div className="card py-12 text-center text-cafe-500">
+          No items match “{search.trim()}”.
+        </div>
       ) : (
         <div className="space-y-6">
           {categories.map((cat) => {
-            const catItems = items.filter((i) => i.category_id === cat.id);
+            const catItems = filteredItems.filter((i) => i.category_id === cat.id);
+            if (query && catItems.length === 0) return null;
             return (
               <section key={cat.id}>
                 <EditableCategoryName
@@ -382,11 +428,11 @@ export default function MenuPage() {
             );
           })}
 
-          {items.filter((i) => !i.category_id).length > 0 && (
+          {filteredItems.filter((i) => !i.category_id).length > 0 && (
             <section>
               <h3 className="mb-3 text-lg font-bold text-cafe-800">Uncategorized</h3>
               <div className="space-y-2">
-                {items
+                {filteredItems
                   .filter((i) => !i.category_id)
                   .map((item) => (
                     <MenuItemRow
@@ -494,14 +540,13 @@ function MenuItemRow({
 
   return (
     <div
-      className={`card flex flex-wrap items-center justify-between gap-3 ${
+      className={`card flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between ${
         !item.available ? "opacity-50" : ""
       }`}
     >
       <div className="flex min-w-0 flex-1 items-start gap-3">
         {item.image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <LazyMenuImage
             src={item.image_url}
             alt={item.name}
             className="h-16 w-16 shrink-0 rounded-xl object-cover bg-cafe-100"
@@ -542,7 +587,7 @@ function MenuItemRow({
           )}
         </div>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3 sm:justify-end">
         {editingPrice ? (
           <div className="flex items-center gap-1">
             <span className="text-cafe-600">₹</span>

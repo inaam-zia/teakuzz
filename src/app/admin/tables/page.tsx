@@ -192,9 +192,9 @@ export default function TablesPage() {
           {tables.map((table) => (
             <div key={table.id} className="card space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <p className="text-lg font-bold text-cafe-900">Table {table.table_number}</p>
-                  <p className="text-sm text-cafe-500">{getScanUrl(table.table_number)}</p>
+                  <p className="break-all text-sm text-cafe-500">{getScanUrl(table.table_number)}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span
