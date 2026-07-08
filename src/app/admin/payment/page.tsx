@@ -10,12 +10,17 @@ export default function PaymentQrPage() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [label, setLabel] = useState("");
+  const [upiId, setUpiId] = useState("");
+  const [payeeName, setPayeeName] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [locked, setLocked] = useState(false);
   const [unlockPassword, setUnlockPassword] = useState("");
   const [unlockError, setUnlockError] = useState("");
   const [unlocking, setUnlocking] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editUpiId, setEditUpiId] = useState("");
+  const [editPayeeName, setEditPayeeName] = useState("");
 
   async function load() {
     setError("");
@@ -83,6 +88,8 @@ export default function PaymentQrPage() {
     const fd = new FormData();
     fd.append("file", file);
     fd.append("label", label);
+    fd.append("upiId", upiId);
+    fd.append("payeeName", payeeName);
     fd.append("setActive", "true");
 
     const res = await fetch("/api/admin/payment-qr", { method: "POST", body: fd });
@@ -95,6 +102,8 @@ export default function PaymentQrPage() {
     }
 
     setLabel("");
+    setUpiId("");
+    setPayeeName("");
     setSuccess("Payment QR uploaded and set as active.");
     await load();
   }
@@ -109,6 +118,32 @@ export default function PaymentQrPage() {
       return;
     }
     setSuccess("Active payment QR updated.");
+    await load();
+  }
+
+  function startEditUpi(code: PaymentQrCode) {
+    setEditingId(code.id);
+    setEditUpiId(code.upi_id ?? "");
+    setEditPayeeName(code.payee_name ?? "");
+    setError("");
+    setSuccess("");
+  }
+
+  async function saveUpi(id: string) {
+    setError("");
+    setSuccess("");
+    const res = await fetch(`/api/admin/payment-qr/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ upiId: editUpiId, payeeName: editPayeeName }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error || "Could not save UPI details");
+      return;
+    }
+    setEditingId(null);
+    setSuccess("UPI details saved. Customers can now tap to pay.");
     await load();
   }
 
@@ -211,6 +246,34 @@ export default function PaymentQrPage() {
             placeholder="UPI QR"
           />
         </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-brand-muted">
+              UPI ID (for tap-to-pay)
+            </label>
+            <input
+              value={upiId}
+              onChange={(e) => setUpiId(e.target.value)}
+              className="input-field"
+              placeholder="yourcafe@okhdfc"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-brand-muted">
+              Payee name (optional)
+            </label>
+            <input
+              value={payeeName}
+              onChange={(e) => setPayeeName(e.target.value)}
+              className="input-field"
+              placeholder="Teakuzz Cafe"
+            />
+          </div>
+        </div>
+        <p className="text-xs text-brand-subtle">
+          Add your UPI ID to show a &ldquo;Pay now&rdquo; button on customer bills that opens
+          their UPI app with the exact amount pre-filled.
+        </p>
         <div>
           <label className="mb-1 block text-sm font-medium text-brand-muted">QR image</label>
           <input
@@ -253,47 +316,103 @@ export default function PaymentQrPage() {
             {codes.map((code) => (
               <li
                 key={code.id}
-                className={`flex flex-wrap items-center gap-4 rounded-xl border p-4 ${
+                className={`rounded-xl border p-4 ${
                   code.is_active ? "border-green-300 bg-green-50/50" : "border-brand"
                 }`}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={code.image_url}
-                  alt=""
-                  className="h-24 w-24 rounded-lg border border-brand bg-white object-contain"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-brand-heading">
-                    {code.label || "Payment QR"}
-                    {code.is_active && (
-                      <span className="ml-2 text-xs font-bold uppercase text-green-700">
-                        Active
-                      </span>
+                <div className="flex flex-wrap items-center gap-4">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={code.image_url}
+                    alt=""
+                    className="h-24 w-24 rounded-lg border border-brand bg-white object-contain"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-brand-heading">
+                      {code.label || "Payment QR"}
+                      {code.is_active && (
+                        <span className="ml-2 text-xs font-bold uppercase text-green-700">
+                          Active
+                        </span>
+                      )}
+                    </p>
+                    {code.upi_id ? (
+                      <p className="mt-1 text-xs text-brand-muted">
+                        Tap-to-pay: <span className="font-medium">{code.upi_id}</span>
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-xs text-amber-700">
+                        No UPI ID — only the QR image will show (no tap-to-pay)
+                      </p>
                     )}
-                  </p>
-                  <p className="mt-1 text-xs text-brand-subtle">
-                    Added {new Date(code.created_at).toLocaleString("en-IN")}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {!code.is_active && (
+                    <p className="mt-1 text-xs text-brand-subtle">
+                      Added {new Date(code.created_at).toLocaleString("en-IN")}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {!code.is_active && (
+                      <button
+                        type="button"
+                        onClick={() => activate(code.id)}
+                        className="btn-primary py-2 text-xs"
+                      >
+                        Set active
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={() => activate(code.id)}
-                      className="btn-primary py-2 text-xs"
+                      onClick={() =>
+                        editingId === code.id ? setEditingId(null) : startEditUpi(code)
+                      }
+                      className="btn-secondary py-2 text-xs"
                     >
-                      Set active
+                      {editingId === code.id ? "Cancel" : "Edit UPI"}
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => remove(code.id)}
-                    className="btn-secondary py-2 text-xs text-red-600"
-                  >
-                    Delete
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => remove(code.id)}
+                      className="btn-secondary py-2 text-xs text-red-600"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
+
+                {editingId === code.id && (
+                  <div className="mt-4 grid gap-3 border-t border-brand pt-4 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-brand-muted">
+                        UPI ID
+                      </label>
+                      <input
+                        value={editUpiId}
+                        onChange={(e) => setEditUpiId(e.target.value)}
+                        className="input-field"
+                        placeholder="yourcafe@okhdfc"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-brand-muted">
+                        Payee name (optional)
+                      </label>
+                      <input
+                        value={editPayeeName}
+                        onChange={(e) => setEditPayeeName(e.target.value)}
+                        className="input-field"
+                        placeholder="Teakuzz Cafe"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <button
+                        type="button"
+                        onClick={() => saveUpi(code.id)}
+                        className="btn-primary py-2 text-xs"
+                      >
+                        Save UPI details
+                      </button>
+                    </div>
+                  </div>
+                )}
               </li>
             ))}
           </ul>

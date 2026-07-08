@@ -284,6 +284,8 @@ export default function OrderStatusView({ tableNumber, customerName, branding, o
   );
   const [paymentQrUrl, setPaymentQrUrl] = useState<string | null>(null);
   const [paymentQrLabel, setPaymentQrLabel] = useState<string | null>(null);
+  const [paymentUpiId, setPaymentUpiId] = useState<string | null>(null);
+  const [paymentPayeeName, setPaymentPayeeName] = useState<string | null>(null);
 
   const loadPaymentQr = useCallback(async () => {
     const res = await fetch(`/api/payment-qr?_=${Date.now()}`, { cache: "no-store" });
@@ -291,6 +293,8 @@ export default function OrderStatusView({ tableNumber, customerName, branding, o
     const data = await res.json();
     setPaymentQrUrl(data.qr?.imageUrl ?? null);
     setPaymentQrLabel(data.qr?.label ?? null);
+    setPaymentUpiId(data.qr?.upiId ?? null);
+    setPaymentPayeeName(data.qr?.payeeName ?? null);
   }, []);
 
   const loadFeedback = useCallback(async () => {
@@ -397,6 +401,8 @@ export default function OrderStatusView({ tableNumber, customerName, branding, o
                 branding={branding}
                 paymentQrUrl={paymentQrUrl}
                 paymentQrLabel={paymentQrLabel}
+                paymentUpiId={paymentUpiId}
+                paymentPayeeName={paymentPayeeName}
               />
               <div className="mt-5 border-t border-brand pt-4">
                 <p className="mb-3 text-xs font-bold uppercase tracking-wider text-brand-subtle">

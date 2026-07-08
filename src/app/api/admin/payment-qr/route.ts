@@ -37,6 +37,8 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = formData.get("file");
     const label = String(formData.get("label") || "").trim();
+    const upiId = String(formData.get("upiId") || "").trim();
+    const payeeName = String(formData.get("payeeName") || "").trim();
     const setActive = formData.get("setActive") !== "false";
 
     if (!file || !(file instanceof File)) {
@@ -89,6 +91,8 @@ export async function POST(request: Request) {
       .insert({
         image_url: imageUrl,
         label,
+        upi_id: upiId || null,
+        payee_name: payeeName || null,
         is_active: shouldActivate,
       })
       .select()

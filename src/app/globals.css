@@ -416,6 +416,23 @@
     @apply text-[11px] font-bold;
   }
 
+  .thermal-receipt__pay-button {
+    @apply mx-auto flex w-full max-w-[240px] items-center justify-center rounded-xl px-4 py-3 text-sm font-bold text-white no-underline transition;
+    background-color: var(--brand-primary);
+  }
+
+  .thermal-receipt__pay-button:hover {
+    background-color: var(--brand-primary-hover);
+  }
+
+  .thermal-receipt__pay-hint {
+    @apply mt-1.5 text-[10px] text-neutral-500;
+  }
+
+  .thermal-receipt__pay-or {
+    @apply mt-3 text-[10px] font-semibold uppercase tracking-wide text-neutral-500;
+  }
+
   .text-brand-heading {
     color: var(--brand-heading);
   }

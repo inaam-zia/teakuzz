@@ -6,7 +6,7 @@ import { formatSupabaseError } from "@/lib/supabase-errors";
 
 type Params = { params: { id: string } };
 
-export async function PATCH(_request: Request, { params }: Params) {
+export async function PATCH(request: Request, { params }: Params) {
   if (!isAdminAuthenticated()) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -17,6 +17,13 @@ export async function PATCH(_request: Request, { params }: Params) {
 
   if (!isSupabaseConfigured()) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+  }
+
+  let body: { upiId?: string; payeeName?: string } | null = null;
+  try {
+    body = await request.json();
+  } catch {
+    body = null;
   }
 
   try {
@@ -31,9 +38,24 @@ export async function PATCH(_request: Request, { params }: Params) {
       return NextResponse.json({ error: "QR code not found" }, { status: 404 });
     }
 
-    const result = await activatePaymentQr(supabase, params.id);
-    if (result.error) {
-      return NextResponse.json({ error: result.error }, { status: 500 });
+    // If UPI details are provided, update them. Otherwise, activate this QR.
+    if (body && (body.upiId !== undefined || body.payeeName !== undefined)) {
+      const { error: updateError } = await supabase
+        .from("payment_qr_codes")
+        .update({
+          upi_id: body.upiId?.trim() || null,
+          payee_name: body.payeeName?.trim() || null,
+        })
+        .eq("id", params.id);
+
+      if (updateError) {
+        return NextResponse.json({ error: formatSupabaseError(updateError) }, { status: 500 });
+      }
+    } else {
+      const result = await activatePaymentQr(supabase, params.id);
+      if (result.error) {
+        return NextResponse.json({ error: result.error }, { status: 500 });
+      }
     }
 
     const { data, error } = await supabase

@@ -13,6 +13,8 @@ export async function GET() {
       id: active.id,
       imageUrl: active.image_url,
       label: active.label,
+      upiId: active.upi_id,
+      payeeName: active.payee_name,
     },
   });
 }
