@@ -4,9 +4,12 @@ import { createHmac, timingSafeEqual } from "crypto";
 const ADMIN_COOKIE = "cafe_admin_session";
 const CUSTOMER_COOKIE = "cafe_customer_session";
 const RECENT_ORDER_COOKIE = "cafe_recent_order";
+const PAYMENT_QR_COOKIE = "cafe_payment_qr_session";
 const SESSION_VALUE = "authenticated";
 const CUSTOMER_SESSION_DAYS = 7;
 const RECENT_ORDER_HOURS = 48;
+const PAYMENT_QR_UNLOCK_MINUTES = 60;
+const PAYMENT_QR_MARKER = "payment-qr-unlocked";
 
 export type CustomerIdentity = {
   type: "phone" | "email";
@@ -88,6 +91,54 @@ export function verifyAdminPassword(password: string): boolean {
 
 export function getCafeName(): string {
   return process.env.NEXT_PUBLIC_CAFE_NAME || "Cafe";
+}
+
+// --- Payment QR lock (second password gating the payment QR section) ---
+
+export function getPaymentQrPassword(): string | undefined {
+  return process.env.PAYMENT_QR_PASSWORD || process.env.ADMIN_PASSWORD || undefined;
+}
+
+export function verifyPaymentQrPassword(password: string): boolean {
+  const expected = getPaymentQrPassword();
+  if (!expected) return false;
+  return password === expected;
+}
+
+export function isPaymentQrUnlocked(): boolean {
+  const token = cookies().get(PAYMENT_QR_COOKIE)?.value;
+  if (!token) return false;
+
+  const payload = decodeToken<SessionPayload>(token);
+  return payload?.value === PAYMENT_QR_MARKER;
+}
+
+export function getPaymentQrUnlockCookieConfig() {
+  return {
+    name: PAYMENT_QR_COOKIE,
+    value: encodeToken({
+      type: "phone",
+      value: PAYMENT_QR_MARKER,
+      exp: Date.now() + PAYMENT_QR_UNLOCK_MINUTES * 60 * 1000,
+    }),
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: 60 * PAYMENT_QR_UNLOCK_MINUTES,
+  };
+}
+
+export function getPaymentQrLockCookieConfig() {
+  return {
+    name: PAYMENT_QR_COOKIE,
+    value: "",
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: 0,
+  };
 }
 
 // --- Customer verified session (after OTP) ---

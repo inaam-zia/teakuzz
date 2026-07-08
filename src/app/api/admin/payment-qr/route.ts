@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isAdminAuthenticated } from "@/lib/auth";
+import { isAdminAuthenticated, isPaymentQrUnlocked } from "@/lib/auth";
 import { activatePaymentQr, listPaymentQrCodes } from "@/lib/payment-qr";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/supabase-errors";
@@ -12,6 +12,10 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (!isPaymentQrUnlocked()) {
+    return NextResponse.json({ error: "Payment QR is locked", locked: true }, { status: 403 });
+  }
+
   const codes = await listPaymentQrCodes();
   return NextResponse.json({ codes });
 }
@@ -19,6 +23,10 @@ export async function GET() {
 export async function POST(request: Request) {
   if (!isAdminAuthenticated()) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!isPaymentQrUnlocked()) {
+    return NextResponse.json({ error: "Payment QR is locked", locked: true }, { status: 403 });
   }
 
   if (!isSupabaseConfigured()) {

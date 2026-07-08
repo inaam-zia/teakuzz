@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatPrice } from "@/lib/format";
 import { formatOfferIncludes } from "@/lib/offers";
 import type { MenuItem, Offer } from "@/lib/types";
@@ -28,6 +29,8 @@ async function uploadMenuImageFile(file: File): Promise<string> {
 }
 
 export default function OffersPage() {
+  const searchParams = useSearchParams();
+  const prefillApplied = useRef(false);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,6 +69,38 @@ export default function OffersPage() {
   useEffect(() => {
     load().finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (prefillApplied.current || loading) return;
+
+    const name = searchParams.get("name");
+    const itemsParam = searchParams.get("items");
+    const price = searchParams.get("price");
+
+    if (!name && !itemsParam && !price) return;
+
+    const items: ComboLine[] = [];
+    if (itemsParam) {
+      for (const id of itemsParam.split(",")) {
+        const menuItemId = id.trim();
+        if (menuItemId) {
+          items.push({ menu_item_id: menuItemId, quantity: 1 });
+        }
+      }
+    }
+
+    if (name || items.length || price) {
+      setForm({
+        name: name ?? "",
+        description: "Suggested from sales insights",
+        price: price ?? "",
+        active: true,
+        items,
+      });
+      setShowForm(true);
+      prefillApplied.current = true;
+    }
+  }, [loading, searchParams]);
 
   const menuSum = useMemo(() => {
     return form.items.reduce((sum, line) => {
