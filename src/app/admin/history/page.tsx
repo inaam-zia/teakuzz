@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import ThermalReceipt from "@/components/thermal-receipt";
 import { formatDate, formatPrice } from "@/lib/format";
 import { fetchJsonArray } from "@/lib/parse-api";
+import type { CafeBranding } from "@/lib/branding-types";
+import { getDefaultBranding } from "@/lib/branding-types";
 import type { OrderWithItems } from "@/lib/types";
 
 export default function HistoryPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
+  const [branding, setBranding] = useState<CafeBranding>(getDefaultBranding());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [from, setFrom] = useState("");
@@ -38,6 +42,10 @@ export default function HistoryPage() {
 
   useEffect(() => {
     loadHistory();
+    fetch("/api/branding")
+      .then((r) => r.json())
+      .then((data: CafeBranding) => setBranding(data))
+      .catch(() => {});
   }, []);
 
   return (
@@ -143,17 +151,34 @@ export default function HistoryPage() {
                   <p className="text-sm text-cafe-500">{formatDate(order.created_at)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-cafe-700">{formatPrice(order.total)}</p>
                   <p className="text-xs capitalize text-cafe-500">{order.status}</p>
                 </div>
               </div>
               <ul className="mt-3 space-y-1 border-t border-cafe-100 pt-3 text-sm text-cafe-600">
                 {order.order_items.map((item) => (
-                  <li key={item.id}>
-                    {item.quantity}× {item.item_name}
+                  <li key={item.id} className="flex justify-between gap-3">
+                    <span>
+                      {item.quantity}× {item.item_name}
+                    </span>
+                    <span>{formatPrice(item.item_price * item.quantity)}</span>
                   </li>
                 ))}
+                <li className="flex justify-between border-t border-cafe-100 pt-2 font-bold text-cafe-900">
+                  <span>Total</span>
+                  <span>{formatPrice(order.total)}</span>
+                </li>
               </ul>
+
+              <div className="mt-4 border-t border-cafe-200 pt-4">
+                <p className="mb-3 text-xs font-bold uppercase tracking-wider text-cafe-500">
+                  Bill
+                </p>
+                <ThermalReceipt
+                  order={order}
+                  customerName={order.customer_name || "Guest"}
+                  branding={branding}
+                />
+              </div>
             </div>
           ))}
         </div>

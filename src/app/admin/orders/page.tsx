@@ -19,6 +19,45 @@ const statusColors: Record<OrderStatus, string> = {
   cancelled: "bg-gray-100 text-gray-600",
 };
 
+function PreparingIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M6 13h12" />
+      <path d="M6 17h12" />
+      <path d="M8 9V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4" />
+      <path d="M4 21h16" />
+    </svg>
+  );
+}
+
+function ServedIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+
 export default function LiveOrdersPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,7 +136,6 @@ export default function LiveOrdersPage() {
                     {formatDateShort(order.created_at)}
                   </p>
                 </div>
-                <p className="text-xl font-bold text-cafe-700">{formatPrice(order.total)}</p>
               </div>
 
               <ul className="space-y-1 rounded-xl bg-cafe-50 px-4 py-3">
@@ -111,20 +149,27 @@ export default function LiveOrdersPage() {
                     </span>
                   </li>
                 ))}
+                <li className="flex justify-between border-t border-cafe-200 pt-2 text-sm font-bold text-cafe-900">
+                  <span>Total</span>
+                  <span>{formatPrice(order.total)}</span>
+                </li>
               </ul>
 
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => updateStatus(order.id, "preparing")}
                   disabled={order.status !== "new" || updatingId === order.id}
-                  className="btn-secondary text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                  className="btn-secondary inline-flex items-center gap-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-50"
                 >
+                  <PreparingIcon />
                   Mark preparing
                 </button>
                 <button
                   onClick={() => updateStatus(order.id, "served")}
-                  className="btn-primary text-xs"
+                  disabled={updatingId === order.id}
+                  className="btn-primary inline-flex items-center gap-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-50"
                 >
+                  <ServedIcon />
                   Mark served
                 </button>
                 <button
