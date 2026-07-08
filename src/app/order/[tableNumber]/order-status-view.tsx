@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import CafeBrandingBlock from "@/components/cafe-branding-block";
 import ThermalReceipt from "@/components/thermal-receipt";
 import { formatPrice } from "@/lib/format";
@@ -205,85 +205,68 @@ function DishFeedbackForm({
   );
 }
 
-function OrderCard({
-  order,
-  tableNumber,
-  customerName,
-  branding,
-  paymentQrUrl,
-  paymentQrLabel,
-  feedbackByItemId,
-  onFeedbackSubmitted,
-}: {
-  order: OrderWithItems;
-  tableNumber: number;
-  customerName: string;
-  branding: CafeBranding;
-  paymentQrUrl: string | null;
-  paymentQrLabel: string | null;
-  feedbackByItemId: Map<string, DishFeedback>;
-  onFeedbackSubmitted: (feedback: DishFeedback) => void;
-}) {
-  const isServed = order.status === "served";
-
+function OrderStatusCard({ order }: { order: OrderWithItems }) {
   return (
     <div className="rounded-2xl border border-brand bg-brand-surface p-4 shadow-sm">
-      {!isServed && (
-        <div className="mb-4">
-          <StatusTimeline status={order.status} />
-        </div>
-      )}
-
-      {isServed ? (
-        <>
-          <ThermalReceipt
-            order={order}
-            customerName={customerName}
-            branding={branding}
-            paymentQrUrl={paymentQrUrl}
-            paymentQrLabel={paymentQrLabel}
-          />
-          <div className="mt-5 border-t border-brand pt-4">
-            <p className="mb-3 text-xs font-bold uppercase tracking-wider text-brand-subtle">
-              Rate your dishes
-            </p>
-            <ul className="space-y-2">
-              {order.order_items.map((item) => (
-                <DishFeedbackForm
-                  key={item.id}
-                  item={item}
-                  tableNumber={tableNumber}
-                  existing={feedbackByItemId.get(item.id)}
-                  onSubmitted={onFeedbackSubmitted}
-                />
-              ))}
-            </ul>
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm font-semibold text-brand-heading">
-              {STATUS_LABELS[order.status]}
-            </p>
-            <p className="font-bold text-brand-muted">{formatPrice(order.total)}</p>
-          </div>
-          <ul className="space-y-2 border-t border-brand pt-3">
-            {order.order_items.map((item) => (
-              <li key={item.id} className="flex justify-between text-sm">
-                <span className="text-brand-heading">
-                  {item.quantity}× {item.item_name}
-                </span>
-                <span className="text-brand-muted">
-                  {formatPrice(item.item_price * item.quantity)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+      <div className="mb-4">
+        <StatusTimeline status={order.status} />
+      </div>
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-sm font-semibold text-brand-heading">
+          {STATUS_LABELS[order.status]}
+        </p>
+        <p className="font-bold text-brand-muted">{formatPrice(order.total)}</p>
+      </div>
+      <ul className="space-y-2 border-t border-brand pt-3">
+        {order.order_items.map((item) => (
+          <li key={item.id} className="flex justify-between text-sm">
+            <span className="text-brand-heading">
+              {item.quantity}× {item.item_name}
+            </span>
+            <span className="text-brand-muted">
+              {formatPrice(item.item_price * item.quantity)}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
+}
+
+/**
+ * Merge all non-cancelled orders into a single bill. Returns null until every
+ * non-cancelled order for the table has been served, so the customer sees one
+ * consolidated bill (and one feedback section) instead of one per order.
+ */
+function buildConsolidatedOrder(orders: OrderWithItems[]): OrderWithItems | null {
+  const billable = orders.filter((o) => o.status !== "cancelled");
+  if (billable.length === 0 || !billable.every((o) => o.status === "served")) {
+    return null;
+  }
+
+  const sorted = [...billable].sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const base = sorted[0];
+
+  const merged = new Map<string, OrderItem>();
+  for (const order of sorted) {
+    for (const item of order.order_items) {
+      const key = `${item.item_name}__${item.item_price}`;
+      const existing = merged.get(key);
+      if (existing) {
+        existing.quantity += item.quantity;
+      } else {
+        merged.set(key, { ...item });
+      }
+    }
+  }
+
+  const total = billable.reduce((sum, o) => sum + o.total, 0);
+
+  return {
+    ...base,
+    total,
+    order_items: Array.from(merged.values()),
+  };
 }
 
 type Props = {
@@ -366,8 +349,8 @@ export default function OrderStatusView({ tableNumber, customerName, branding, o
     });
   }
 
-  const allServed =
-    orders.length > 0 && orders.every((o) => o.status === "served");
+  const consolidatedOrder = useMemo(() => buildConsolidatedOrder(orders), [orders]);
+  const allServed = consolidatedOrder !== null;
   const allCancelled =
     orders.length > 0 && orders.every((o) => o.status === "cancelled");
 
@@ -406,20 +389,34 @@ export default function OrderStatusView({ tableNumber, customerName, branding, o
             <p className="text-center text-sm text-brand-muted">Loading status…</p>
           ) : orders.length === 0 ? (
             <p className="text-center text-sm text-brand-muted">No active orders</p>
-          ) : (
-            orders.map((order) => (
-              <OrderCard
-                key={order.id}
-                order={order}
-                tableNumber={tableNumber}
+          ) : consolidatedOrder ? (
+            <div className="rounded-2xl border border-brand bg-brand-surface p-4 shadow-sm">
+              <ThermalReceipt
+                order={consolidatedOrder}
                 customerName={customerName}
                 branding={branding}
                 paymentQrUrl={paymentQrUrl}
                 paymentQrLabel={paymentQrLabel}
-                feedbackByItemId={feedbackByItemId}
-                onFeedbackSubmitted={handleFeedbackSubmitted}
               />
-            ))
+              <div className="mt-5 border-t border-brand pt-4">
+                <p className="mb-3 text-xs font-bold uppercase tracking-wider text-brand-subtle">
+                  Rate your dishes
+                </p>
+                <ul className="space-y-2">
+                  {consolidatedOrder.order_items.map((item) => (
+                    <DishFeedbackForm
+                      key={item.id}
+                      item={item}
+                      tableNumber={tableNumber}
+                      existing={feedbackByItemId.get(item.id)}
+                      onSubmitted={handleFeedbackSubmitted}
+                    />
+                  ))}
+                </ul>
+              </div>
+            </div>
+          ) : (
+            orders.map((order) => <OrderStatusCard key={order.id} order={order} />)
           )}
         </div>
 
