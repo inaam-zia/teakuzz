@@ -57,11 +57,14 @@ function OfferCard({
         {offer.name}
       </p>
       <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-cafe-500">{includes}</p>
+      {isBlocked && (
+        <p className="mt-1 text-[10px] font-semibold text-amber-700">
+          Preparing — add more?
+        </p>
+      )}
       <div className="mt-2 flex items-center justify-between gap-1">
         <span className="text-xs font-bold text-cafe-700">{formatPrice(offer.price)}</span>
-        {isBlocked ? (
-          <span className="text-[10px] font-semibold text-amber-700">Preparing</span>
-        ) : quantity > 0 ? (
+        {quantity > 0 ? (
           <div className="qty-controls gap-1.5">
             <button
               type="button"
@@ -120,12 +123,14 @@ function MenuItemRow({
           <p className="mt-1 text-sm leading-relaxed text-cafe-500">{item.description}</p>
         )}
         {isPreparing && (
-          <p className="mt-1 text-xs font-semibold text-amber-700">Preparing your order</p>
+          <p className="mt-1 text-xs font-semibold text-amber-700">
+            Preparing your order — tap + to add more
+          </p>
         )}
       </div>
       <div className="flex shrink-0 flex-col items-end justify-between gap-2 self-stretch">
         <span className="menu-price">{formatPrice(item.price)}</span>
-        {isPreparing ? null : quantity > 0 ? (
+        {quantity > 0 ? (
           <div className="qty-controls">
             <button
               type="button"
@@ -189,11 +194,14 @@ function MenuSuggestionCard({
       <p className="line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-tight text-cafe-900">
         {item.name}
       </p>
+      {isPreparing && (
+        <p className="mt-0.5 text-[10px] font-semibold text-amber-700">
+          Preparing — add more?
+        </p>
+      )}
       <div className="mt-2 flex items-center justify-between gap-1">
         <span className="text-xs font-bold text-cafe-700">{formatPrice(item.price)}</span>
-        {isPreparing ? (
-          <span className="text-[10px] font-semibold text-amber-700">Preparing</span>
-        ) : quantity > 0 ? (
+        {quantity > 0 ? (
           <div className="qty-controls gap-1.5">
             <button
               type="button"
@@ -495,7 +503,6 @@ export default function OrderClient({
   }
 
   function addToCart(item: MenuItem) {
-    if (preparingItemIds.has(item.id)) return;
     setCart((prev) => {
       const existing = prev.find((c) => c.kind === "menu" && c.menuItemId === item.id);
       if (existing) {
@@ -520,7 +527,6 @@ export default function OrderClient({
   }
 
   function addOfferToCart(offer: Offer) {
-    if (offerBlocked(offer)) return;
     setCart((prev) => {
       const existing = prev.find((c) => c.kind === "offer" && c.offerId === offer.id);
       if (existing) {
@@ -550,7 +556,6 @@ export default function OrderClient({
   }
 
   function updateQty(menuItemId: string, delta: number) {
-    if (delta > 0 && preparingItemIds.has(menuItemId)) return;
     setCart((prev) =>
       prev
         .map((c) =>
@@ -563,8 +568,6 @@ export default function OrderClient({
   }
 
   function updateOfferQty(offerId: string, delta: number) {
-    const offer = offers.find((o) => o.id === offerId);
-    if (delta > 0 && offer && offerBlocked(offer)) return;
     setCart((prev) =>
       prev
         .map((c) =>

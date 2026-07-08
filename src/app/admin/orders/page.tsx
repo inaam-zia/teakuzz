@@ -23,6 +23,7 @@ export default function LiveOrdersPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   async function loadOrders() {
     const { items, error: loadError } = await fetchJsonArray<OrderWithItems>(
@@ -40,12 +41,17 @@ export default function LiveOrdersPage() {
   }, []);
 
   async function updateStatus(orderId: string, status: OrderStatus) {
-    await fetch(`/api/orders/${orderId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    loadOrders();
+    setUpdatingId(orderId);
+    try {
+      await fetch(`/api/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      await loadOrders();
+    } finally {
+      setUpdatingId(null);
+    }
   }
 
   return (
@@ -110,7 +116,8 @@ export default function LiveOrdersPage() {
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => updateStatus(order.id, "preparing")}
-                  className="btn-secondary text-xs"
+                  disabled={order.status !== "new" || updatingId === order.id}
+                  className="btn-secondary text-xs disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Mark preparing
                 </button>
