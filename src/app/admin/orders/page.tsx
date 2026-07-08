@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { formatDateShort, formatPrice } from "@/lib/format";
 import { fetchJsonArray } from "@/lib/parse-api";
 import type { OrderStatus, OrderWithItems } from "@/lib/types";
+import { useNewOrders } from "../new-orders-context";
 
 const statusLabels: Record<OrderStatus, string> = {
   new: "New",
@@ -59,6 +60,7 @@ function ServedIcon() {
 }
 
 export default function LiveOrdersPage() {
+  const { refreshNewOrders } = useNewOrders();
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -88,6 +90,7 @@ export default function LiveOrdersPage() {
         body: JSON.stringify({ status }),
       });
       await loadOrders();
+      await refreshNewOrders();
     } finally {
       setUpdatingId(null);
     }

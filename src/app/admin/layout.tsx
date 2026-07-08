@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, type CSSProperties } from "react";
 import { PaymentLockProvider, usePaymentLock } from "./payment-lock-context";
+import { NewOrdersProvider, useNewOrders } from "./new-orders-context";
 
 // Admin always uses Open Sans regardless of the customer-facing theme font.
 const adminFontStyle = {
@@ -53,6 +54,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { unlocked, setUnlocked } = usePaymentLock();
+  const { newOrderCount } = useNewOrders();
   const prevPathRef = useRef(pathname);
 
   // Re-lock the payment QR section whenever the admin leaves it.
@@ -91,6 +93,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           {links.map((link) => {
             const active = pathname === link.href;
             const isPayment = link.href === PAYMENT_PATH;
+            const isLiveOrders = link.href === "/admin/orders";
             return (
               <Link
                 key={link.href}
@@ -101,6 +104,11 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               >
                 {isPayment && <LockIcon open={unlocked} />}
                 {link.label}
+                {isLiveOrders && newOrderCount > 0 && (
+                  <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                    {newOrderCount > 99 ? "99+" : newOrderCount}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -122,7 +130,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <PaymentLockProvider>
-      <AdminShell>{children}</AdminShell>
+      <NewOrdersProvider>
+        <AdminShell>{children}</AdminShell>
+      </NewOrdersProvider>
     </PaymentLockProvider>
   );
 }
