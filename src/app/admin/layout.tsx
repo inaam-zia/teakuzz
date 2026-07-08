@@ -14,8 +14,8 @@ const adminFontStyle = {
 const PAYMENT_PATH = "/admin/payment";
 
 const links = [
-  { href: "/admin", label: "Dashboard" },
   { href: "/admin/orders", label: "Live orders" },
+  { href: "/admin/dashboard", label: "Dashboard" },
   { href: "/admin/customers", label: "Customers" },
   { href: "/admin/menu", label: "Menu" },
   { href: "/admin/offers", label: "Offers" },
