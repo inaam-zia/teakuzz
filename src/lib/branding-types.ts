@@ -41,13 +41,14 @@ export const DEFAULT_THEME: CafeTheme = {
   colorSubtle: "#b8834f",
   colorButtonText: "#ffffff",
   colorAccent: "#c49a6c",
-  fontFamily: "dm-sans",
+  fontFamily: "open-sans",
   fontSizeBase: "16px",
   fontSizeHeading: "24px",
   fontSizeSmall: "14px",
 };
 
 export const FONT_OPTIONS = [
+  { id: "open-sans", label: "Open Sans", css: "var(--font-open-sans), system-ui, sans-serif" },
   { id: "dm-sans", label: "DM Sans", css: "var(--font-dm-sans), system-ui, sans-serif" },
   { id: "inter", label: "Inter", css: "var(--font-inter), system-ui, sans-serif" },
   { id: "poppins", label: "Poppins", css: "var(--font-poppins), system-ui, sans-serif" },

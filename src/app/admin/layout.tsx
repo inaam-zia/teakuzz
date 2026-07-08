@@ -2,6 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import type { CSSProperties } from "react";
+
+// Admin always uses Open Sans regardless of the customer-facing theme font.
+const adminFontStyle = {
+  "--brand-font-family": "var(--font-open-sans), system-ui, sans-serif",
+  fontFamily: "var(--font-open-sans), system-ui, sans-serif",
+} as CSSProperties;
 
 const links = [
   { href: "/admin", label: "Dashboard" },
@@ -19,7 +26,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
 
   if (pathname === "/admin/login") {
-    return <>{children}</>;
+    return <div style={adminFontStyle}>{children}</div>;
   }
 
   async function logout() {
@@ -28,7 +35,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen" style={adminFontStyle}>
       <header className="sticky top-0 z-40 border-b border-brand bg-brand-surface/95 backdrop-blur-md [padding-top:env(safe-area-inset-top)]">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:py-4">
           <h1 className="text-base font-bold text-brand-heading sm:text-lg">Cafe Admin</h1>

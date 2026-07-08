@@ -18,7 +18,7 @@
     --brand-subtle: #b8834f;
     --brand-button-text: #ffffff;
     --brand-accent: #c49a6c;
-    --brand-font-family: var(--font-dm-sans), system-ui, sans-serif;
+    --brand-font-family: var(--font-open-sans), system-ui, sans-serif;
     --brand-font-size-base: 16px;
     --brand-font-size-heading: 24px;
     --brand-font-size-small: 14px;
@@ -44,6 +44,17 @@
   select,
   textarea {
     font-size: max(16px, 1rem);
+  }
+
+  /* WebKit/Safari gives date & time inputs a large intrinsic min-width that
+     overflows narrow mobile containers — constrain them to their parent. */
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  input[type="month"],
+  input[type="week"] {
+    min-width: 0;
+    max-width: 100%;
   }
 }
 

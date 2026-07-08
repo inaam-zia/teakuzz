@@ -41,20 +41,20 @@ function ColorInput({
 
   return (
     <div className="flex items-center gap-3">
-      <label className="w-40 shrink-0 text-sm text-brand-muted">{label}</label>
+      <label className="w-28 shrink-0 text-sm text-brand-muted sm:w-40">{label}</label>
       {isHex && (
         <input
           type="color"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="h-9 w-12 cursor-pointer rounded border border-brand bg-white"
+          className="h-9 w-10 shrink-0 cursor-pointer rounded border border-brand bg-white sm:w-12"
         />
       )}
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="input-field flex-1 py-2 font-mono text-xs"
+        className="input-field w-0 min-w-0 flex-1 py-2 font-mono text-xs"
       />
     </div>
   );

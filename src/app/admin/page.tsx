@@ -168,7 +168,7 @@ export default function AdminDashboard() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <div>
+          <div className="min-w-0">
             <label className="mb-1 block text-sm font-medium text-cafe-700">From</label>
             <input
               type="date"
@@ -177,7 +177,7 @@ export default function AdminDashboard() {
               className="input-field"
             />
           </div>
-          <div>
+          <div className="min-w-0">
             <label className="mb-1 block text-sm font-medium text-cafe-700">To</label>
             <input
               type="date"

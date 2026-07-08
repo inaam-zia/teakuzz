@@ -49,7 +49,7 @@ export default function HistoryPage() {
 
       <div className="card space-y-4">
         <div className="grid gap-4 sm:grid-cols-3">
-          <div>
+          <div className="min-w-0">
             <label className="mb-1 block text-sm font-medium text-cafe-700">From</label>
             <input
               type="date"
@@ -58,7 +58,7 @@ export default function HistoryPage() {
               className="input-field"
             />
           </div>
-          <div>
+          <div className="min-w-0">
             <label className="mb-1 block text-sm font-medium text-cafe-700">To</label>
             <input
               type="date"
@@ -67,7 +67,7 @@ export default function HistoryPage() {
               className="input-field"
             />
           </div>
-          <div>
+          <div className="min-w-0">
             <label className="mb-1 block text-sm font-medium text-cafe-700">Table</label>
             <input
               type="number"
