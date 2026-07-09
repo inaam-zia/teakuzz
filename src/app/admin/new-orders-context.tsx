@@ -98,6 +98,22 @@ export function NewOrdersProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => dismissSnackbar(id), 6000);
   }, [dismissSnackbar]);
 
+  const pushNativeNotification = useCallback((title: string, body: string) => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (Notification.permission !== "granted") return;
+
+    const notification = new Notification(title, {
+      body,
+      tag: `order-${Date.now()}`,
+    });
+
+    notification.onclick = () => {
+      window.focus();
+      window.location.href = "/admin/orders";
+      notification.close();
+    };
+  }, []);
+
   const refreshNewOrders = useCallback(async () => {
     if (pollingRef.current) return;
     pollingRef.current = true;
@@ -120,10 +136,13 @@ export function NewOrdersProvider({ children }: { children: React.ReactNode }) {
         playNewOrderSound();
         for (const order of newOrders) {
           const name = order.customer_name?.trim() || "Guest";
-          pushSnackbar(
-            `New order — Table ${order.table_number} · ${name}`,
-            "/admin/orders"
-          );
+          const message = `New order — Table ${order.table_number} · ${name}`;
+          pushSnackbar(message, "/admin/orders");
+
+          // Show native browser notifications when admin tab is inactive/backgrounded.
+          if (document.visibilityState !== "visible") {
+            pushNativeNotification("New order received", message);
+          }
         }
       }
 
@@ -131,7 +150,7 @@ export function NewOrdersProvider({ children }: { children: React.ReactNode }) {
     } finally {
       pollingRef.current = false;
     }
-  }, [pushSnackbar]);
+  }, [pushNativeNotification, pushSnackbar]);
 
   useEffect(() => {
     document.title =
@@ -145,7 +164,6 @@ export function NewOrdersProvider({ children }: { children: React.ReactNode }) {
     void refreshNewOrders();
 
     function tick() {
-      if (document.visibilityState === "hidden") return;
       void refreshNewOrders();
     }
 
@@ -163,6 +181,14 @@ export function NewOrdersProvider({ children }: { children: React.ReactNode }) {
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [refreshNewOrders]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (Notification.permission === "default") {
+      // Ask once so background notifications can work for new incoming orders.
+      void Notification.requestPermission();
+    }
+  }, []);
 
   return (
     <NewOrdersContext.Provider value={{ newOrderCount, refreshNewOrders }}>

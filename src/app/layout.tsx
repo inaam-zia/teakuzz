@@ -25,6 +25,11 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: branding.appName,
     description: branding.tagline,
+    icons: {
+      icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+      shortcut: ["/icon.svg"],
+      apple: [{ url: "/icon.svg" }],
+    },
   };
 }
 
