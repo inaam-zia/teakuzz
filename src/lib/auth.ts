@@ -89,6 +89,20 @@ export function verifyAdminPassword(password: string): boolean {
   return password === expected;
 }
 
+/** Prefer DB hash when set; otherwise fall back to ADMIN_PASSWORD env. */
+export async function verifyAdminPasswordAsync(password: string): Promise<boolean> {
+  if (!password) return false;
+
+  const { getStoredPasswordHashes, verifyPasswordHash } = await import(
+    "@/lib/password-store"
+  );
+  const { adminPasswordHash } = await getStoredPasswordHashes();
+  if (adminPasswordHash) {
+    return verifyPasswordHash(password, adminPasswordHash);
+  }
+  return verifyAdminPassword(password);
+}
+
 export function getCafeName(): string {
   return process.env.NEXT_PUBLIC_CAFE_NAME || "Cafe";
 }
@@ -103,6 +117,40 @@ export function verifyPaymentQrPassword(password: string): boolean {
   const expected = getPaymentQrPassword();
   if (!expected) return false;
   return password === expected;
+}
+
+/** Prefer DB hash when set; otherwise env PAYMENT_QR_PASSWORD / ADMIN_PASSWORD. */
+export async function verifyPaymentQrPasswordAsync(
+  password: string
+): Promise<boolean> {
+  if (!password) return false;
+
+  const { getStoredPasswordHashes, verifyPasswordHash } = await import(
+    "@/lib/password-store"
+  );
+  const hashes = await getStoredPasswordHashes();
+
+  if (hashes.paymentQrPasswordHash) {
+    return verifyPasswordHash(password, hashes.paymentQrPasswordHash);
+  }
+
+  // If only admin password was customized in DB, allow that for payment QR fallback
+  if (hashes.adminPasswordHash && !process.env.PAYMENT_QR_PASSWORD) {
+    return verifyPasswordHash(password, hashes.adminPasswordHash);
+  }
+
+  return verifyPaymentQrPassword(password);
+}
+
+export function isPaymentQrPasswordConfiguredSync(): boolean {
+  return Boolean(getPaymentQrPassword());
+}
+
+export async function isPaymentQrPasswordConfigured(): Promise<boolean> {
+  const { getStoredPasswordHashes } = await import("@/lib/password-store");
+  const hashes = await getStoredPasswordHashes();
+  if (hashes.paymentQrPasswordHash || hashes.adminPasswordHash) return true;
+  return isPaymentQrPasswordConfiguredSync();
 }
 
 export function isPaymentQrUnlocked(): boolean {

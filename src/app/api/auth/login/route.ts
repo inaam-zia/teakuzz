@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getAdminCookieConfig, verifyAdminPassword } from "@/lib/auth";
+import { getAdminCookieConfig, verifyAdminPasswordAsync } from "@/lib/auth";
 
 export async function POST(request: Request) {
   const { password } = await request.json();
 
-  if (!verifyAdminPassword(password)) {
+  if (!(await verifyAdminPasswordAsync(String(password || "")))) {
     return NextResponse.json({ error: "Wrong password" }, { status: 401 });
   }
 

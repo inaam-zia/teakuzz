@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import {
   getPaymentQrLockCookieConfig,
-  getPaymentQrPassword,
   getPaymentQrUnlockCookieConfig,
   isAdminAuthenticated,
+  isPaymentQrPasswordConfigured,
   isPaymentQrUnlocked,
-  verifyPaymentQrPassword,
+  verifyPaymentQrPasswordAsync,
 } from "@/lib/auth";
 
 export async function GET() {
@@ -16,7 +16,7 @@ export async function GET() {
 
   return NextResponse.json({
     unlocked: isPaymentQrUnlocked(),
-    configured: Boolean(getPaymentQrPassword()),
+    configured: await isPaymentQrPasswordConfigured(),
   });
 }
 
@@ -25,23 +25,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!getPaymentQrPassword()) {
+  if (!(await isPaymentQrPasswordConfigured())) {
     return NextResponse.json(
-      { error: "Payment QR password is not configured. Set PAYMENT_QR_PASSWORD or ADMIN_PASSWORD." },
+      {
+        error:
+          "Payment QR password is not configured. Set one in Settings, or set PAYMENT_QR_PASSWORD / ADMIN_PASSWORD in env.",
+      },
       { status: 503 }
     );
   }
 
-  let password = "";
-  try {
-    const body = await request.json();
-    password = String(body.password || "");
-  } catch {
-    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
-  }
+  const body = await request.json();
+  const password = String(body.password || "");
 
-  if (!verifyPaymentQrPassword(password)) {
-    return NextResponse.json({ error: "Wrong payment QR password" }, { status: 401 });
+  if (!(await verifyPaymentQrPasswordAsync(password))) {
+    return NextResponse.json({ error: "Wrong password" }, { status: 401 });
   }
 
   cookies().set(getPaymentQrUnlockCookieConfig());

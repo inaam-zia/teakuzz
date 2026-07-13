@@ -19,6 +19,7 @@ type SavedCustomer = {
 
 type Props = {
   tableNumber: number;
+  tableName: string;
   branding: CafeBranding;
   savedCustomer?: SavedCustomer | null;
   initialOffers?: Offer[];
@@ -311,6 +312,7 @@ function MenuCategorySection({
 
 export default function OrderClient({
   tableNumber,
+  tableName,
   branding,
   savedCustomer,
   initialOffers = [],
@@ -675,6 +677,7 @@ export default function OrderClient({
     return (
       <OrderStatusView
         tableNumber={tableNumber}
+        tableName={tableName}
         customerName={customerName}
         branding={branding}
         onAddMore={orderAgain}
@@ -686,7 +689,7 @@ export default function OrderClient({
     <main className="order-bg mx-auto min-h-screen max-w-lg pb-28">
       <header className="order-header sticky top-0 z-10 px-5 py-5">
         <CafeBrandingBlock branding={branding} logoSize="md" showTagline />
-        <p className="mt-2 text-sm font-semibold text-brand-heading">Table {tableNumber}</p>
+        <p className="mt-2 text-sm font-semibold text-brand-heading">{tableName}</p>
         <p className="mt-0.5 text-xs text-brand-subtle">Use + to add items to your order</p>
         {hasSavedDetails && (
           <p className="mt-1 text-xs text-brand-subtle">
@@ -917,7 +920,7 @@ export default function OrderClient({
                 ))}
               </div>
 
-              <p className="text-sm text-cafe-500">Table {tableNumber}</p>
+              <p className="text-sm text-cafe-500">{tableName}</p>
 
               {!showCheckout ? (
                 <button

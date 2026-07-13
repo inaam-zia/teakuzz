@@ -3,6 +3,7 @@ import { isAdminAuthenticated } from "@/lib/auth";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/supabase-errors";
 import { newQrToken } from "@/lib/table-session";
+import { nextAvailableTableNumber } from "@/lib/tables";
 import type { CafeTable } from "@/lib/types";
 
 export async function GET() {
@@ -18,6 +19,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from("cafe_tables")
       .select("*")
+      .order("label", { ascending: true, nullsFirst: false })
       .order("table_number");
 
     if (error) {
@@ -27,6 +29,27 @@ export async function GET() {
           needsMigration: true,
           migrationSql: "supabase/add-cafe-tables.sql",
         });
+      }
+      // label column may be missing — fall back
+      if (error.message.includes("label")) {
+        const fallback = await supabase
+          .from("cafe_tables")
+          .select("*")
+          .order("table_number");
+        if (fallback.error) {
+          return NextResponse.json(
+            { error: formatSupabaseError(fallback.error) },
+            { status: 500 }
+          );
+        }
+        const admin = isAdminAuthenticated();
+        const tables = (fallback.data ?? []) as CafeTable[];
+        if (!admin) {
+          return NextResponse.json({
+            tables: tables.filter((t) => t.enabled).map((t) => t.table_number),
+          });
+        }
+        return NextResponse.json({ tables });
       }
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 500 });
     }
@@ -57,33 +80,71 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const tableNumber = parseInt(String(body.tableNumber), 10);
+    const name = String(body.name ?? body.label ?? "").trim();
+    const notes = String(body.notes ?? "").trim().slice(0, 500);
 
-    if (isNaN(tableNumber) || tableNumber < 1 || tableNumber > 99) {
+    if (!name) {
+      return NextResponse.json({ error: "Table name is required" }, { status: 400 });
+    }
+    if (name.length > 80) {
       return NextResponse.json(
-        { error: "Table number must be between 1 and 99" },
+        { error: "Table name must be 80 characters or less" },
         { status: 400 }
       );
     }
 
     const supabase = createServerClient();
+
+    // Enforce unique name (case-insensitive)
+    const { data: existing } = await supabase.from("cafe_tables").select("id, label");
+    const taken = (existing ?? []).some(
+      (t) => String(t.label || "").trim().toLowerCase() === name.toLowerCase()
+    );
+    if (taken) {
+      return NextResponse.json(
+        { error: "A table with this name already exists" },
+        { status: 409 }
+      );
+    }
+
+    const tableNumber = await nextAvailableTableNumber();
+    if (tableNumber == null) {
+      return NextResponse.json(
+        { error: "Maximum of 99 tables reached" },
+        { status: 400 }
+      );
+    }
+
     const qrToken = newQrToken();
+    const row: Record<string, unknown> = {
+      table_number: tableNumber,
+      enabled: true,
+      label: name,
+      notes,
+      qr_token: qrToken,
+    };
 
     let { data, error } = await supabase
       .from("cafe_tables")
-      .insert({ table_number: tableNumber, enabled: true, qr_token: qrToken })
+      .insert(row)
       .select()
       .single();
 
-    // Column may not exist yet — create without token
     if (error?.message.includes("qr_token")) {
-      const fallback = await supabase
-        .from("cafe_tables")
-        .insert({ table_number: tableNumber, enabled: true })
-        .select()
-        .single();
+      delete row.qr_token;
+      const fallback = await supabase.from("cafe_tables").insert(row).select().single();
       data = fallback.data;
       error = fallback.error;
+    }
+
+    if (error?.message.includes("label") || error?.message.includes("notes")) {
+      return NextResponse.json(
+        {
+          error:
+            "Run supabase/add-table-info.sql in Supabase SQL editor to enable table names.",
+        },
+        { status: 503 }
+      );
     }
 
     if (error) {

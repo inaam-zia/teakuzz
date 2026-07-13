@@ -272,12 +272,19 @@ function buildConsolidatedOrder(orders: OrderWithItems[]): OrderWithItems | null
 
 type Props = {
   tableNumber: number;
+  tableName: string;
   customerName: string;
   branding: CafeBranding;
   onAddMore: () => void;
 };
 
-export default function OrderStatusView({ tableNumber, customerName, branding, onAddMore }: Props) {
+export default function OrderStatusView({
+  tableNumber,
+  tableName,
+  customerName,
+  branding,
+  onAddMore,
+}: Props) {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(true);
   const [feedbackByItemId, setFeedbackByItemId] = useState<Map<string, DishFeedback>>(
@@ -380,7 +387,7 @@ export default function OrderStatusView({ tableNumber, customerName, branding, o
               <h1 className="text-2xl font-bold text-brand-heading">Order placed!</h1>
               <p className="mt-2 text-sm text-brand-muted">
                 Thanks {customerName.split(" ")[0]} — we&apos;ll bring it to{" "}
-                <strong>Table {tableNumber}</strong>
+                <strong>{tableName}</strong>
               </p>
             </>
           )}

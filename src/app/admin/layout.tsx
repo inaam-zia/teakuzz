@@ -28,6 +28,7 @@ const links = [
   { href: "/admin/branding", label: "Appearance" },
   { href: "/admin/payment", label: "Payment QR" },
   { href: "/admin/history", label: "History" },
+  { href: "/admin/settings", label: "Settings" },
 ];
 
 function LockIcon({ open }: { open: boolean }) {

@@ -19,6 +19,9 @@ export type CafeTable = {
   id: string;
   table_number: number;
   enabled: boolean;
+  /** Optional friendly name shown in admin (e.g. "Patio", "Window") */
+  label?: string | null;
+  notes?: string | null;
   session_id?: string;
   /** When set, scan URL must include ?t= this value or the QR is rejected */
   qr_token?: string | null;
