@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatPrice } from "@/lib/format";
+import BulkMenuPhotosPanel from "@/components/bulk-menu-photos-panel";
 import LazyMenuImage from "@/components/lazy-menu-image";
 import type { MenuCategory, MenuItem } from "@/lib/types";
 
@@ -23,6 +24,7 @@ export default function MenuPage() {
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [showBulkPhotos, setShowBulkPhotos] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [form, setForm] = useState({
     name: "",
@@ -238,9 +240,21 @@ export default function MenuPage() {
         </div>
         <div className="flex w-full flex-wrap gap-2 sm:w-auto">
           <button
+            type="button"
+            onClick={() => {
+              setShowBulkPhotos(true);
+              setShowForm(false);
+              setShowCategoryForm(false);
+            }}
+            className="btn-secondary flex-1 sm:flex-none"
+          >
+            Bulk change photos
+          </button>
+          <button
             onClick={() => {
               setShowCategoryForm(!showCategoryForm);
               setShowForm(false);
+              setShowBulkPhotos(false);
             }}
             className="btn-secondary flex-1 sm:flex-none"
           >
@@ -250,6 +264,7 @@ export default function MenuPage() {
             onClick={() => {
               setShowForm(!showForm);
               setShowCategoryForm(false);
+              setShowBulkPhotos(false);
             }}
             className="btn-primary flex-1 sm:flex-none"
           >
@@ -287,6 +302,14 @@ export default function MenuPage() {
           {error}
         </div>
       )}
+
+      <BulkMenuPhotosPanel
+        open={showBulkPhotos}
+        items={items}
+        uploadImage={uploadMenuImageFile}
+        onComplete={loadMenu}
+        onClose={() => setShowBulkPhotos(false)}
+      />
 
       {showCategoryForm && (
         <form onSubmit={addCategory} className="card flex flex-wrap gap-3">

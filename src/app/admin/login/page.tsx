@@ -6,8 +6,8 @@ export default async function AdminLoginPage() {
   const year = new Date().getFullYear();
 
   return (
-    <main className="order-bg relative flex min-h-screen flex-col items-center justify-center px-4 py-10">
-      <div className="w-full max-w-sm">
+    <main className="order-bg relative flex min-h-screen min-h-dvh flex-col items-center px-4 py-10">
+      <div className="flex w-full max-w-sm flex-1 flex-col justify-center">
         <div className="mb-8 flex flex-col items-center text-center">
           <div className="h-24 w-24 overflow-hidden rounded-3xl border border-brand bg-brand-surface shadow-md">
             {branding.logoUrl ? (

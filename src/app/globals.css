@@ -30,6 +30,19 @@
     font-family: var(--brand-font-family);
     font-size: var(--brand-font-size-base);
     @apply antialiased;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  html {
+    height: 100%;
+  }
+
+  /* Admin fills the viewport on desktop/laptop even when content is short */
+  .admin-shell {
+    min-height: 100vh;
+    min-height: 100dvh;
+    background-color: var(--brand-bg);
   }
 
   h1,
@@ -476,6 +489,30 @@
 
   .upi-sheet__cancel {
     @apply mt-3 w-full rounded-xl px-4 py-2.5 text-sm font-medium text-neutral-600;
+  }
+
+  .bulk-photo-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    padding-top: max(1rem, env(safe-area-inset-top));
+    background-color: rgb(0 0 0 / 0.45);
+  }
+
+  .bulk-photo-modal {
+    width: 100%;
+    max-width: 28rem;
+    max-height: min(90dvh, 90vh);
+    overflow-y: auto;
+    border-radius: 1rem;
+    background-color: #fff;
+    padding: 1.25rem;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
   }
 
   .text-brand-heading {

@@ -103,8 +103,11 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen" style={adminFontStyle}>
-      <header className="sticky top-0 z-40 border-b border-brand bg-brand-surface/95 backdrop-blur-md [padding-top:env(safe-area-inset-top)]">
+    <div
+      className="admin-shell flex min-h-screen min-h-dvh flex-col"
+      style={adminFontStyle}
+    >
+      <header className="sticky top-0 z-40 shrink-0 border-b border-brand bg-brand-surface/95 backdrop-blur-md [padding-top:env(safe-area-inset-top)]">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:py-4">
           <h1 className="text-base font-bold text-brand-heading sm:text-lg">Cafe Admin</h1>
           <button
@@ -148,10 +151,10 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
       </header>
-      <main className="mx-auto max-w-5xl px-4 py-6 [padding-bottom:calc(1.5rem+env(safe-area-inset-bottom))]">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 [padding-bottom:calc(1.5rem+env(safe-area-inset-bottom))]">
         {children}
       </main>
-      <footer className="mx-auto max-w-5xl px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2">
+      <footer className="mx-auto w-full max-w-5xl shrink-0 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2">
         <DeveloperCredit />
       </footer>
     </div>
@@ -163,9 +166,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (pathname === "/admin/login") {
     return (
-      <div style={adminFontStyle} className="flex min-h-screen flex-col">
+      <div style={adminFontStyle} className="admin-shell flex min-h-screen min-h-dvh flex-col">
         <div className="flex-1">{children}</div>
-        <footer className="px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2">
+        <footer className="shrink-0 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2">
           <DeveloperCredit />
         </footer>
       </div>
