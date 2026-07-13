@@ -13,6 +13,7 @@ import {
 import type { PlaceOrderPayload } from "@/lib/types";
 import { buildComboOrderName, getOfferById } from "@/lib/offers";
 import { deductAndLogForOrder } from "@/lib/inventory";
+import { getTableLabelMap } from "@/lib/tables";
 
 export async function GET(request: Request) {
   if (!isAdminAuthenticated()) {
@@ -69,7 +70,13 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 500 });
     }
 
-    return NextResponse.json(data ?? []);
+    const labelMap = await getTableLabelMap();
+    const orders = (data ?? []).map((order) => ({
+      ...order,
+      table_label: labelMap.get(Number(order.table_number)) ?? null,
+    }));
+
+    return NextResponse.json(orders);
   } catch (err) {
     return NextResponse.json({ error: formatSupabaseError(err) }, { status: 500 });
   }

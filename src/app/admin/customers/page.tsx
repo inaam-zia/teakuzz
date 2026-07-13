@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import TableHeading from "@/components/table-heading";
 import { formatDate, formatPrice } from "@/lib/format";
 import { fetchJsonArray } from "@/lib/parse-api";
 import type { OrderStatus, OrderWithItems } from "@/lib/types";
@@ -194,7 +195,11 @@ export default function CustomersPage() {
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div>
                             <p className="font-semibold text-cafe-900">
-                              Table {order.table_number}
+                              <TableHeading
+                                tableNumber={order.table_number}
+                                tableName={order.table_label}
+                                size="sm"
+                              />
                             </p>
                             <p className="text-xs text-cafe-500">
                               {formatDate(order.created_at)}

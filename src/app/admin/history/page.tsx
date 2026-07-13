@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import ThermalReceipt from "@/components/thermal-receipt";
+import TableHeading from "@/components/table-heading";
 import { downloadOrderHistoryExcel } from "@/lib/export-history-excel";
 import { formatDate, formatPrice } from "@/lib/format";
 import { fetchJsonArray } from "@/lib/parse-api";
@@ -173,8 +174,17 @@ export default function HistoryPage() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="font-bold text-cafe-900">
-                    Table {order.table_number}
-                    {order.customer_name && ` · ${order.customer_name}`}
+                    <TableHeading
+                      tableNumber={order.table_number}
+                      tableName={order.table_label}
+                      size="md"
+                    />
+                    {order.customer_name && (
+                      <span className="font-medium text-cafe-600">
+                        {" "}
+                        · {order.customer_name}
+                      </span>
+                    )}
                   </p>
                   {order.customer_phone && (
                     <p className="text-sm text-cafe-500">+91 {order.customer_phone}</p>

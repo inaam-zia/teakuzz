@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import DeveloperCredit from "@/components/developer-credit";
+import TableHeading from "@/components/table-heading";
 import { formatDate, formatPrice } from "@/lib/format";
 import { isValidEmail, normalizeEmail } from "@/lib/email";
 import { normalizePhone } from "@/lib/phone";
@@ -37,8 +38,17 @@ function OrderCard({ order }: { order: OrderWithItems }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-bold text-cafe-900">
-            Table {order.table_number}
-            {order.customer_name && ` · ${order.customer_name}`}
+            <TableHeading
+              tableNumber={order.table_number}
+              tableName={order.table_label}
+              size="md"
+            />
+            {order.customer_name && (
+              <span className="font-medium text-cafe-600">
+                {" "}
+                · {order.customer_name}
+              </span>
+            )}
           </p>
           <p className="text-sm text-cafe-500">{formatDate(order.created_at)}</p>
         </div>

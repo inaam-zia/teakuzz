@@ -82,6 +82,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const name = String(body.name ?? body.label ?? "").trim();
     const notes = String(body.notes ?? "").trim().slice(0, 500);
+    let tableNumber = parseInt(String(body.tableNumber ?? body.table_number ?? ""), 10);
 
     if (!name) {
       return NextResponse.json({ error: "Table name is required" }, { status: 400 });
@@ -107,12 +108,27 @@ export async function POST(request: Request) {
       );
     }
 
-    const tableNumber = await nextAvailableTableNumber();
-    if (tableNumber == null) {
-      return NextResponse.json(
-        { error: "Maximum of 99 tables reached" },
-        { status: 400 }
-      );
+    if (isNaN(tableNumber) || tableNumber < 1 || tableNumber > 99) {
+      const next = await nextAvailableTableNumber();
+      if (next == null) {
+        return NextResponse.json(
+          { error: "Maximum of 99 tables reached" },
+          { status: 400 }
+        );
+      }
+      tableNumber = next;
+    } else {
+      const { data: numTaken } = await supabase
+        .from("cafe_tables")
+        .select("id")
+        .eq("table_number", tableNumber)
+        .maybeSingle();
+      if (numTaken) {
+        return NextResponse.json(
+          { error: "Another table already uses that number" },
+          { status: 409 }
+        );
+      }
     }
 
     const qrToken = newQrToken();

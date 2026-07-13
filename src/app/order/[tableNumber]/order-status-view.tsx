@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import CafeBrandingBlock from "@/components/cafe-branding-block";
 import DeveloperCredit from "@/components/developer-credit";
+import TableHeading from "@/components/table-heading";
 import ThermalReceipt from "@/components/thermal-receipt";
 import { formatPrice } from "@/lib/format";
 import { fetchMyActiveOrders, ORDER_STATUS_POLL_MS } from "@/lib/order-poll";
@@ -387,7 +388,7 @@ export default function OrderStatusView({
               <h1 className="text-2xl font-bold text-brand-heading">Order placed!</h1>
               <p className="mt-2 text-sm text-brand-muted">
                 Thanks {customerName.split(" ")[0]} — we&apos;ll bring it to{" "}
-                <strong>{tableName}</strong>
+                <TableHeading tableNumber={tableNumber} tableName={tableName} size="sm" />
               </p>
             </>
           )}

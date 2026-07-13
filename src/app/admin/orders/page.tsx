@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatDateShort, formatPrice } from "@/lib/format";
 import { fetchJsonArray } from "@/lib/parse-api";
 import type { OrderStatus, OrderWithItems } from "@/lib/types";
+import TableHeading from "@/components/table-heading";
 import { useNewOrders } from "../new-orders-context";
 
 const statusLabels: Record<OrderStatus, string> = {
@@ -160,9 +161,13 @@ export default function LiveOrdersPage() {
             <div key={order.id} className="card space-y-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xl font-bold text-cafe-900">
-                      Table {order.table_number}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="m-0">
+                      <TableHeading
+                        tableNumber={order.table_number}
+                        tableName={order.table_label}
+                        size="lg"
+                      />
                     </h3>
                     <span
                       className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusColors[order.status]}`}

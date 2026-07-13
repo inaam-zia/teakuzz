@@ -8,7 +8,18 @@ import {
   getRecentOrderId,
   getRecentOrderLogoutCookieConfig,
 } from "@/lib/auth";
+import { getTableLabelMap } from "@/lib/tables";
 import type { OrderWithItems } from "@/lib/types";
+
+function withTableLabels(
+  orders: OrderWithItems[],
+  labelMap: Map<number, string>
+): OrderWithItems[] {
+  return orders.map((order) => ({
+    ...order,
+    table_label: labelMap.get(Number(order.table_number)) ?? null,
+  }));
+}
 
 export async function GET() {
   if (!isSupabaseConfigured()) {
@@ -20,6 +31,7 @@ export async function GET() {
 
   try {
     const supabase = createServerClient();
+    const labelMap = await getTableLabelMap();
 
     const recentOrderId = getRecentOrderId();
     if (recentOrderId) {
@@ -32,7 +44,7 @@ export async function GET() {
       if (!error && data) {
         return NextResponse.json({
           mode: "recent",
-          orders: [data] as OrderWithItems[],
+          orders: withTableLabels([data as OrderWithItems], labelMap),
         });
       }
     }
@@ -67,7 +79,7 @@ export async function GET() {
     return NextResponse.json({
       mode: "verified",
       identity,
-      orders: (data ?? []) as OrderWithItems[],
+      orders: withTableLabels((data ?? []) as OrderWithItems[], labelMap),
     });
   } catch (err) {
     return NextResponse.json({ error: formatSupabaseError(err) }, { status: 500 });

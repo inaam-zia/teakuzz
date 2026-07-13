@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import TableHeading from "@/components/table-heading";
 import { formatDateShort, formatPrice } from "@/lib/format";
 import { fetchJsonArray } from "@/lib/parse-api";
 import type { OrderWithItems } from "@/lib/types";
@@ -350,7 +351,13 @@ export default function AdminDashboard() {
             {orders.slice(0, 5).map((order) => (
               <div key={order.id} className="card flex items-center justify-between">
                 <div>
-                  <p className="font-bold text-cafe-900">Table {order.table_number}</p>
+                  <p className="font-bold text-cafe-900">
+                    <TableHeading
+                      tableNumber={order.table_number}
+                      tableName={order.table_label}
+                      size="md"
+                    />
+                  </p>
                   <p className="text-sm text-cafe-500">
                     {order.customer_name || "Guest"}
                     {order.customer_phone && ` · +91 ${order.customer_phone}`}

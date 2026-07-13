@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import TableHeading from "@/components/table-heading";
 import { getScanUrl } from "@/lib/site-url";
-import { tableDisplayName } from "@/lib/tables";
+import { formatTableRef, tableDisplayName } from "@/lib/tables";
 import type { CafeTable } from "@/lib/types";
 
 type EditForm = {
@@ -17,6 +18,7 @@ export default function TablesPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [newName, setNewName] = useState("");
+  const [newNumber, setNewNumber] = useState("");
   const [adding, setAdding] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -57,10 +59,16 @@ export default function TablesPage() {
     setError("");
     setSuccess("");
 
+    const payload: { name: string; tableNumber?: number } = {
+      name: newName.trim(),
+    };
+    const num = parseInt(newNumber, 10);
+    if (!isNaN(num)) payload.tableNumber = num;
+
     const res = await fetch("/api/tables", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newName.trim() }),
+      body: JSON.stringify(payload),
     });
 
     const data = await res.json();
@@ -72,7 +80,10 @@ export default function TablesPage() {
     }
 
     setNewName("");
-    setSuccess(`“${tableDisplayName(data)}” added. Print its QR code.`);
+    setNewNumber("");
+    setSuccess(
+      `“${formatTableRef(data.table_number, data.label)}” added. Print its QR code.`
+    );
     await loadTables();
   }
 
@@ -103,12 +114,6 @@ export default function TablesPage() {
     }
 
     const existing = tables.find((t) => t.id === editingId);
-    const previousName = existing?.label?.trim() || "";
-    const nameChanged =
-      previousName.toLowerCase() !== name.toLowerCase() ||
-      (!previousName && name);
-
-    // Always treat rename from default "Table N" when label was empty as a name set
     const isRename =
       !!existing &&
       (existing.label || "").trim().toLowerCase() !== name.toLowerCase();
@@ -151,7 +156,7 @@ export default function TablesPage() {
             : "Table info saved.")
       );
       cancelEdit();
-      if (data.reset || nameChanged) {
+      if (data.reset) {
         setQrBump((n) => n + 1);
         setExpandedId(savedId);
       }
@@ -279,18 +284,20 @@ export default function TablesPage() {
   }
 
   function printQr(table: CafeTable) {
-    const title = escapeHtml(tableDisplayName(table));
+    const name = escapeHtml(tableDisplayName(table));
+    const numberLine = `Table ${table.table_number}`;
     const scanUrl = getScanUrl(table.table_number, table.qr_token);
     const qrSrc = `/api/tables/qr?number=${table.table_number}&t=${Date.now()}&b=${qrBump}`;
     const win = window.open("", "_blank");
     if (!win) return;
 
     win.document.write(`<!DOCTYPE html>
-<html><head><title>${title} QR</title>
+<html><head><title>${name} QR</title>
 <style>
   body { font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #faf6f1; }
   .card { text-align: center; padding: 48px; border: 3px solid #5c3b2c; border-radius: 24px; background: white; max-width: 420px; }
-  h1 { font-size: 40px; color: #5c3b2c; margin: 0 0 8px; word-break: break-word; }
+  h1 { font-size: 40px; color: #5c3b2c; margin: 0 0 4px; word-break: break-word; }
+  .num { color: #8a5639; margin: 0 0 8px; font-size: 16px; font-weight: 600; }
   .scan { color: #8a5639; margin: 0 0 20px; font-size: 18px; font-weight: 600; }
   img { width: 280px; height: 280px; }
   .url { margin-top: 16px; font-size: 12px; color: #aaa; word-break: break-all; max-width: 320px; }
@@ -298,7 +305,8 @@ export default function TablesPage() {
 </style></head>
 <body>
   <div class="card">
-    <h1>${title}</h1>
+    <h1>${name}</h1>
+    <p class="num">${numberLine}</p>
     <p class="scan">Scan to place an order</p>
     <img src="${qrSrc}" alt="QR code" />
     <p class="url">${escapeHtml(scanUrl)}</p>
@@ -333,13 +341,14 @@ export default function TablesPage() {
         })
       )
       .map((table) => {
-        const title = escapeHtml(tableDisplayName(table));
+        const name = escapeHtml(tableDisplayName(table));
         const scanUrl = getScanUrl(table.table_number, table.qr_token);
         const qrSrc = `/api/tables/qr?number=${table.table_number}&t=${stamp}&b=${qrBump}`;
         return `<div class="card">
-  <h1>${title}</h1>
+  <h1>${name}</h1>
+  <p class="num">Table ${table.table_number}</p>
   <p class="scan">Scan to place an order</p>
-  <img src="${qrSrc}" alt="QR for ${title}" />
+  <img src="${qrSrc}" alt="QR for ${name}" />
   <p class="url">${escapeHtml(scanUrl)}</p>
 </div>`;
       })
@@ -367,7 +376,8 @@ export default function TablesPage() {
     break-inside: avoid;
     page-break-inside: avoid;
   }
-  h1 { font-size: 28px; color: #5c3b2c; margin: 0 0 6px; word-break: break-word; }
+  h1 { font-size: 28px; color: #5c3b2c; margin: 0 0 4px; word-break: break-word; }
+  .num { color: #8a5639; margin: 0 0 6px; font-size: 14px; font-weight: 600; }
   .scan { color: #8a5639; margin: 0 0 12px; font-size: 15px; font-weight: 600; }
   img { width: 200px; height: 200px; }
   .url { margin-top: 10px; font-size: 10px; color: #aaa; word-break: break-all; }
@@ -411,8 +421,9 @@ export default function TablesPage() {
         <div>
           <h2 className="text-2xl font-bold text-cafe-900">Table QR codes</h2>
           <p className="text-cafe-600">
-            Manage tables by name, print QR codes, and regenerate codes when needed.
-            Renaming a table deletes its previous orders and invalidates the old QR.
+            Manage tables by name and number. The name is shown prominently; the number
+          stays in QR links. Renaming a table deletes its previous orders and
+          invalidates the old QR.
           </p>
         </div>
         {tables.length > 0 && (
@@ -440,19 +451,34 @@ export default function TablesPage() {
       )}
 
       <form onSubmit={addTable} className="card flex flex-wrap items-end gap-3">
-        <div className="min-w-[180px] flex-1">
-          <label htmlFor="new-table" className="mb-1 block text-sm font-medium text-cafe-700">
-            Add table
+        <div className="min-w-[160px] flex-1">
+          <label htmlFor="new-table-name" className="mb-1 block text-sm font-medium text-cafe-700">
+            Table name
           </label>
           <input
-            id="new-table"
+            id="new-table-name"
             type="text"
-            placeholder="e.g. Patio, Window, Counter 1"
+            placeholder="e.g. Patio, Window"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             className="input-field"
             maxLength={80}
             required
+          />
+        </div>
+        <div className="w-28">
+          <label htmlFor="new-table-num" className="mb-1 block text-sm font-medium text-cafe-700">
+            Number
+          </label>
+          <input
+            id="new-table-num"
+            type="number"
+            min={1}
+            max={99}
+            placeholder="Auto"
+            value={newNumber}
+            onChange={(e) => setNewNumber(e.target.value)}
+            className="input-field"
           />
         </div>
         <button type="submit" disabled={adding || !newName.trim()} className="btn-primary">
@@ -474,8 +500,12 @@ export default function TablesPage() {
               <div key={table.id} className="card space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-lg font-bold text-cafe-900">{title}</p>
-                    <p className="break-all text-sm text-cafe-500">
+                    <TableHeading
+                      tableNumber={table.table_number}
+                      tableName={table.label}
+                      size="lg"
+                    />
+                    <p className="mt-1 break-all text-sm text-cafe-500">
                       {getScanUrl(table.table_number, table.qr_token)}
                     </p>
                     {table.notes?.trim() && (
@@ -556,7 +586,7 @@ export default function TablesPage() {
                   >
                     <h3 className="font-semibold text-cafe-900">Edit table</h3>
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="sm:col-span-2">
+                      <div>
                         <label className="mb-1 block text-sm font-medium text-cafe-700">
                           Table name
                         </label>
@@ -572,7 +602,18 @@ export default function TablesPage() {
                         />
                         <p className="mt-1 text-xs text-amber-800">
                           Changing the name deletes all previous orders for this table and
-                          invalidates the old QR — print a new one after saving.
+                          invalidates the old QR.
+                        </p>
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-sm font-medium text-cafe-700">
+                          Table number
+                        </label>
+                        <p className="input-field bg-cafe-50 text-cafe-700">
+                          {tables.find((t) => t.id === editingId)?.table_number}
+                        </p>
+                        <p className="mt-1 text-xs text-cafe-500">
+                          Fixed when the table is created — not editable.
                         </p>
                       </div>
                       <div className="sm:col-span-2">

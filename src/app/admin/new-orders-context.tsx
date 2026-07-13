@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { playNewOrderSound } from "@/lib/admin-notification-sound";
+import { formatTableRef } from "@/lib/tables";
 import { fetchJsonArray } from "@/lib/parse-api";
 import type { OrderWithItems } from "@/lib/types";
 
@@ -136,7 +137,8 @@ export function NewOrdersProvider({ children }: { children: React.ReactNode }) {
         playNewOrderSound();
         for (const order of newOrders) {
           const name = order.customer_name?.trim() || "Guest";
-          const message = `New order — Table ${order.table_number} · ${name}`;
+          const tableRef = formatTableRef(order.table_number, order.table_label);
+          const message = `New order — ${tableRef} · ${name}`;
           pushSnackbar(message, "/admin/orders");
 
           // Show native browser notifications when admin tab is inactive/backgrounded.

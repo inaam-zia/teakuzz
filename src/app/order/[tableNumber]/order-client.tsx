@@ -7,6 +7,7 @@ import { normalizePhone, isValidPhone } from "@/lib/phone";
 import CafeBrandingBlock from "@/components/cafe-branding-block";
 import DeveloperCredit from "@/components/developer-credit";
 import LazyMenuImage from "@/components/lazy-menu-image";
+import TableHeading from "@/components/table-heading";
 import OrderStatusView from "./order-status-view";
 import { formatOfferIncludes } from "@/lib/offers";
 import type { CafeBranding } from "@/lib/branding-types";
@@ -689,7 +690,9 @@ export default function OrderClient({
     <main className="order-bg mx-auto min-h-screen max-w-lg pb-28">
       <header className="order-header sticky top-0 z-10 px-5 py-5">
         <CafeBrandingBlock branding={branding} logoSize="md" showTagline />
-        <p className="mt-2 text-sm font-semibold text-brand-heading">{tableName}</p>
+        <div className="mt-2">
+          <TableHeading tableNumber={tableNumber} tableName={tableName} size="md" />
+        </div>
         <p className="mt-0.5 text-xs text-brand-subtle">Use + to add items to your order</p>
         {hasSavedDetails && (
           <p className="mt-1 text-xs text-brand-subtle">
@@ -920,7 +923,9 @@ export default function OrderClient({
                 ))}
               </div>
 
-              <p className="text-sm text-cafe-500">{tableName}</p>
+              <div>
+                <TableHeading tableNumber={tableNumber} tableName={tableName} size="sm" />
+              </div>
 
               {!showCheckout ? (
                 <button

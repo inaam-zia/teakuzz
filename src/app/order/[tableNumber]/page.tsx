@@ -33,7 +33,9 @@ export default async function OrderPage({ params }: Props) {
         <div className="order-hero-card w-full max-w-lg text-center">
           <h1 className="text-2xl font-bold text-cafe-900">Table unavailable</h1>
           <p className="mt-2 text-cafe-600">
-            {tableName} is currently disabled. Please ask staff for assistance.
+            <span className="font-bold text-cafe-900">{tableName}</span>
+            {" · "}
+            Table {tableNumber} is currently disabled. Please ask staff for assistance.
           </p>
         </div>
         <DeveloperCredit className="mt-8" />
@@ -69,7 +71,11 @@ export default async function OrderPage({ params }: Props) {
           <p className="text-4xl">📱</p>
           <h1 className="mt-4 text-2xl font-bold text-cafe-900">Scan the table QR</h1>
           <p className="mt-2 text-cafe-600">{message}</p>
-          <p className="mt-4 text-sm text-cafe-500">{tableName}</p>
+          <p className="mt-4 text-sm text-cafe-500">
+            <span className="font-bold text-cafe-900">{tableName}</span>
+            {" · Table "}
+            {tableNumber}
+          </p>
         </div>
         <DeveloperCredit className="mt-8" />
       </main>

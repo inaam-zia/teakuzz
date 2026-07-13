@@ -37,6 +37,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       updates.enabled = body.enabled;
     }
 
+    // table_number is assigned at create time and is not editable
+
     if (body.notes !== undefined) {
       updates.notes = String(body.notes || "").trim().slice(0, 500);
     }

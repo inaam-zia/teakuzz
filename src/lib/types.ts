@@ -33,6 +33,8 @@ export type OrderStatus = "new" | "preparing" | "served" | "cancelled";
 export type Order = {
   id: string;
   table_number: number;
+  /** Joined from cafe_tables when available */
+  table_label?: string | null;
   customer_name: string | null;
   customer_phone: string | null;
   customer_email: string | null;
