@@ -6,6 +6,7 @@ import TableHeading from "@/components/table-heading";
 import { downloadOrderHistoryExcel } from "@/lib/export-history-excel";
 import { formatDate, formatPrice } from "@/lib/format";
 import { fetchJsonArray } from "@/lib/parse-api";
+import { printThermalBill } from "@/lib/print-bill";
 import type { CafeBranding } from "@/lib/branding-types";
 import { getDefaultBranding } from "@/lib/branding-types";
 import type { OrderWithItems } from "@/lib/types";
@@ -18,6 +19,7 @@ export default function HistoryPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [table, setTable] = useState("");
+  const [expandedBillId, setExpandedBillId] = useState<string | null>(null);
 
   async function loadHistory(overrides?: { from?: string; to?: string; table?: string }) {
     setLoading(true);
@@ -51,6 +53,16 @@ export default function HistoryPage() {
     downloadOrderHistoryExcel(orders, `${parts.join("-")}.xlsx`);
   }
 
+  function printBill(order: OrderWithItems) {
+    const wrap = document.getElementById(`history-bill-${order.id}`);
+    const receipt =
+      (wrap?.querySelector(".thermal-receipt") as HTMLElement | null) || wrap;
+    const title = `Bill · Table ${order.table_number}${
+      order.customer_name ? ` · ${order.customer_name}` : ""
+    }`;
+    printThermalBill(receipt, title);
+  }
+
   useEffect(() => {
     loadHistory();
     fetch("/api/branding")
@@ -63,7 +75,7 @@ export default function HistoryPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-cafe-900">Order history</h2>
-        <p className="text-cafe-600">Find past orders by date or table</p>
+        <p className="text-cafe-600">Find past orders by date or table — print any bill</p>
       </div>
 
       <div className="card space-y-4">
@@ -169,62 +181,97 @@ export default function HistoryPage() {
               Download Excel
             </button>
           </div>
-          {orders.map((order) => (
-            <div key={order.id} className="card">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="font-bold text-cafe-900">
-                    <TableHeading
-                      tableNumber={order.table_number}
-                      tableName={order.table_label}
-                      size="md"
-                    />
-                    {order.customer_name && (
-                      <span className="font-medium text-cafe-600">
-                        {" "}
-                        · {order.customer_name}
-                      </span>
+          {orders.map((order) => {
+            const billOpen = expandedBillId === order.id;
+            return (
+              <div key={order.id} className="card">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-bold text-cafe-900">
+                      <TableHeading
+                        tableNumber={order.table_number}
+                        tableName={order.table_label}
+                        size="md"
+                      />
+                      {order.customer_name && (
+                        <span className="font-medium text-cafe-600">
+                          {" "}
+                          · {order.customer_name}
+                        </span>
+                      )}
+                    </p>
+                    {order.customer_phone && (
+                      <p className="text-sm text-cafe-500">+91 {order.customer_phone}</p>
                     )}
-                  </p>
-                  {order.customer_phone && (
-                    <p className="text-sm text-cafe-500">+91 {order.customer_phone}</p>
-                  )}
-                  {order.customer_email && (
-                    <p className="text-sm text-cafe-500">{order.customer_email}</p>
-                  )}
-                  <p className="text-sm text-cafe-500">{formatDate(order.created_at)}</p>
+                    {order.customer_email && (
+                      <p className="text-sm text-cafe-500">{order.customer_email}</p>
+                    )}
+                    <p className="text-sm text-cafe-500">{formatDate(order.created_at)}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <p className="text-xs capitalize text-cafe-500">{order.status}</p>
+                    <p className="text-sm font-bold text-cafe-900">
+                      {formatPrice(order.total)}
+                    </p>
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedBillId(billOpen ? null : order.id)
+                        }
+                        className="btn-secondary text-xs"
+                      >
+                        {billOpen ? "Hide bill" : "View bill"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => printBill(order)}
+                        className="btn-primary text-xs"
+                      >
+                        Print bill
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs capitalize text-cafe-500">{order.status}</p>
-                </div>
-              </div>
-              <ul className="mt-3 space-y-1 border-t border-cafe-100 pt-3 text-sm text-cafe-600">
-                {order.order_items.map((item) => (
-                  <li key={item.id} className="flex justify-between gap-3">
-                    <span>
-                      {item.quantity}× {item.item_name}
-                    </span>
-                    <span>{formatPrice(item.item_price * item.quantity)}</span>
+                <ul className="mt-3 space-y-1 border-t border-cafe-100 pt-3 text-sm text-cafe-600">
+                  {order.order_items.map((item) => (
+                    <li key={item.id} className="flex justify-between gap-3">
+                      <span>
+                        {item.quantity}× {item.item_name}
+                      </span>
+                      <span>{formatPrice(item.item_price * item.quantity)}</span>
+                    </li>
+                  ))}
+                  <li className="flex justify-between border-t border-cafe-100 pt-2 font-bold text-cafe-900">
+                    <span>Total</span>
+                    <span>{formatPrice(order.total)}</span>
                   </li>
-                ))}
-                <li className="flex justify-between border-t border-cafe-100 pt-2 font-bold text-cafe-900">
-                  <span>Total</span>
-                  <span>{formatPrice(order.total)}</span>
-                </li>
-              </ul>
+                </ul>
 
-              <div className="mt-4 border-t border-cafe-200 pt-4">
-                <p className="mb-3 text-xs font-bold uppercase tracking-wider text-cafe-500">
-                  Bill
-                </p>
-                <ThermalReceipt
-                  order={order}
-                  customerName={order.customer_name || "Guest"}
-                  branding={branding}
-                />
+                <div
+                  className={
+                    billOpen
+                      ? "mt-4 border-t border-cafe-200 pt-4"
+                      : "sr-only"
+                  }
+                  aria-hidden={!billOpen}
+                >
+                  {billOpen ? (
+                    <p className="mb-3 text-xs font-bold uppercase tracking-wider text-cafe-500">
+                      Bill preview
+                    </p>
+                  ) : null}
+                  <div id={`history-bill-${order.id}`}>
+                    <ThermalReceipt
+                      order={order}
+                      customerName={order.customer_name || "Guest"}
+                      branding={branding}
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

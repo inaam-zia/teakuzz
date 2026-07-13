@@ -552,7 +552,7 @@ export default function TablesPage() {
                       onClick={() => clearTableSession(table)}
                       className="btn-secondary text-sm"
                     >
-                      New guests
+                      New guests / clear
                     </button>
                     <button
                       type="button"
