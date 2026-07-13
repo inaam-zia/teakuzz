@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { buildUpiAppLinks, type UpiPayParams } from "@/lib/payment-qr";
 import { formatReceiptGrandTotal } from "@/lib/receipt";
 
@@ -17,9 +18,31 @@ export default function UpiPayPanel({
   fallbackQrLabel,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [amountQrUrl, setAmountQrUrl] = useState<string | null>(null);
   const apps = buildUpiAppLinks(upi);
   const amountLabel = formatReceiptGrandTotal(upi.amount);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,6 +81,51 @@ export default function UpiPayPanel({
 
   const qrSrc = amountQrUrl || fallbackQrUrl || null;
 
+  const sheet =
+    open && mounted
+      ? createPortal(
+          <div
+            className="upi-sheet-backdrop"
+            role="presentation"
+            onClick={() => setOpen(false)}
+          >
+            <div
+              className="upi-sheet"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="upi-sheet-title"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 id="upi-sheet-title" className="upi-sheet__title">
+                Pay {amountLabel}
+              </h3>
+              <p className="upi-sheet__hint">Open with</p>
+              <ul className="upi-sheet__list">
+                {apps.map((app) => (
+                  <li key={app.id}>
+                    <a
+                      href={app.href}
+                      className="upi-sheet__app"
+                      onClick={() => setOpen(false)}
+                    >
+                      {app.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                className="upi-sheet__cancel"
+                onClick={() => setOpen(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>,
+          document.body
+        )
+      : null;
+
   return (
     <div className="thermal-receipt__pay">
       <button
@@ -91,46 +159,7 @@ export default function UpiPayPanel({
         </>
       ) : null}
 
-      {open ? (
-        <div
-          className="upi-sheet-backdrop"
-          role="presentation"
-          onClick={() => setOpen(false)}
-        >
-          <div
-            className="upi-sheet"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="upi-sheet-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 id="upi-sheet-title" className="upi-sheet__title">
-              Pay {amountLabel}
-            </h3>
-            <p className="upi-sheet__hint">Open with</p>
-            <ul className="upi-sheet__list">
-              {apps.map((app) => (
-                <li key={app.id}>
-                  <a
-                    href={app.href}
-                    className="upi-sheet__app"
-                    onClick={() => setOpen(false)}
-                  >
-                    {app.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-            <button
-              type="button"
-              className="upi-sheet__cancel"
-              onClick={() => setOpen(false)}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : null}
+      {sheet}
     </div>
   );
 }
