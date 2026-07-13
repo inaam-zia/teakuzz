@@ -13,13 +13,14 @@ export type PaymentQrCode = {
 
 const SELECT_COLUMNS = "id, image_url, label, upi_id, payee_name, is_active, created_at";
 
-/** Build a UPI deep link that opens the customer's UPI app with amount pre-filled. */
-export function buildUpiDeepLink(params: {
+export type UpiPayParams = {
   upiId: string;
   payeeName?: string | null;
   amount: number;
   note?: string;
-}): string {
+};
+
+function upiQuery(params: UpiPayParams): string {
   const query = new URLSearchParams({
     pa: params.upiId,
     cu: "INR",
@@ -27,7 +28,33 @@ export function buildUpiDeepLink(params: {
   });
   if (params.payeeName) query.set("pn", params.payeeName);
   if (params.note) query.set("tn", params.note);
-  return `upi://pay?${query.toString()}`;
+  return query.toString();
+}
+
+/** Generic UPI link — OS usually shows an app chooser (GPay, PhonePe, Paytm…). */
+export function buildUpiDeepLink(params: UpiPayParams): string {
+  return `upi://pay?${upiQuery(params)}`;
+}
+
+export type UpiAppOption = {
+  id: string;
+  label: string;
+  href: string;
+};
+
+/**
+ * App-specific deep links so the customer can pick GPay / PhonePe / Paytm.
+ * Amount (`am`) is pre-filled in every link. Works on Android Chrome and iOS Safari
+ * when the app is installed; otherwise the generic `upi://` link is the fallback.
+ */
+export function buildUpiAppLinks(params: UpiPayParams): UpiAppOption[] {
+  const q = upiQuery(params);
+  return [
+    { id: "any", label: "Any UPI app", href: `upi://pay?${q}` },
+    { id: "gpay", label: "Google Pay", href: `gpay://upi/pay?${q}` },
+    { id: "phonepe", label: "PhonePe", href: `phonepe://pay?${q}` },
+    { id: "paytm", label: "Paytm", href: `paytmmp://pay?${q}` },
+  ];
 }
 
 export async function getActivePaymentQr(): Promise<PaymentQrCode | null> {

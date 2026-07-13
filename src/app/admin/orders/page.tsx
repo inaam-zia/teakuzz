@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { formatDateShort, formatPrice } from "@/lib/format";
 import { fetchJsonArray } from "@/lib/parse-api";
@@ -66,7 +66,9 @@ export default function LiveOrdersPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [closingTable, setClosingTable] = useState<number | null>(null);
   const [lowStock, setLowStock] = useState<
     { id: string; name: string; quantity: number; unit: string }[]
   >([]);
@@ -102,8 +104,29 @@ export default function LiveOrdersPage() {
     };
   }, []);
 
+  const openTables = useMemo(() => {
+    const map = new Map<
+      number,
+      { tableNumber: number; tableLabel: string | null | undefined; count: number }
+    >();
+    for (const order of orders) {
+      const existing = map.get(order.table_number);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        map.set(order.table_number, {
+          tableNumber: order.table_number,
+          tableLabel: order.table_label,
+          count: 1,
+        });
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.tableNumber - b.tableNumber);
+  }, [orders]);
+
   async function updateStatus(orderId: string, status: OrderStatus) {
     setUpdatingId(orderId);
+    setSuccess("");
     try {
       await fetch(`/api/orders/${orderId}`, {
         method: "PATCH",
@@ -117,6 +140,36 @@ export default function LiveOrdersPage() {
     }
   }
 
+  async function closeTable(tableNumber: number, tableLabel?: string | null) {
+    const title = tableLabel?.trim() || `Table ${tableNumber}`;
+    if (
+      !confirm(
+        `Close “${title}”?\n\nPrevious guests will be locked out. They must scan the table QR again. Use this when the party leaves so the next guests start clean.`
+      )
+    ) {
+      return;
+    }
+
+    setClosingTable(tableNumber);
+    setError("");
+    setSuccess("");
+    try {
+      const res = await fetch("/api/tables/close-by-number", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tableNumber }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Could not close table");
+        return;
+      }
+      setSuccess(data.message || `${title} closed for previous guests.`);
+    } finally {
+      setClosingTable(null);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -127,6 +180,12 @@ export default function LiveOrdersPage() {
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+          {success}
         </div>
       )}
 
@@ -146,6 +205,34 @@ export default function LiveOrdersPage() {
           >
             Open inventory
           </Link>
+        </div>
+      )}
+
+      {openTables.length > 0 && (
+        <div className="card space-y-3">
+          <div>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-cafe-500">
+              Open tables
+            </h3>
+            <p className="text-sm text-cafe-600">
+              Close a table when guests leave so their phone can&apos;t keep ordering.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {openTables.map((table) => (
+              <button
+                key={table.tableNumber}
+                type="button"
+                onClick={() => closeTable(table.tableNumber, table.tableLabel)}
+                disabled={closingTable === table.tableNumber}
+                className="btn-secondary text-xs disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {closingTable === table.tableNumber
+                  ? "Closing…"
+                  : `Close ${table.tableLabel?.trim() || `Table ${table.tableNumber}`}`}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -183,6 +270,14 @@ export default function LiveOrdersPage() {
                     {formatDateShort(order.created_at)}
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => closeTable(order.table_number, order.table_label)}
+                  disabled={closingTable === order.table_number}
+                  className="text-xs font-medium text-cafe-700 underline underline-offset-2 disabled:opacity-50"
+                >
+                  Close table
+                </button>
               </div>
 
               <ul className="space-y-1 rounded-xl bg-cafe-50 px-4 py-3">

@@ -5,7 +5,7 @@ import { createServerClient, isSupabaseConfigured } from "@/lib/supabase";
 const TABLE_ACCESS_COOKIE = "cafe_table_access";
 const TABLE_CUSTOMER_COOKIE = "cafe_table_customer";
 const TABLE_ORDERS_COOKIE = "cafe_table_orders";
-const ACCESS_HOURS = 8;
+const ACCESS_HOURS = 3;
 const MAX_TRACKED_ORDERS = 20;
 
 export type TableSessionPayload = {

@@ -1,6 +1,5 @@
 import type { CafeBranding } from "@/lib/branding-types";
 import { getReceiptConfig } from "@/lib/receipt-config";
-import { buildUpiDeepLink } from "@/lib/payment-qr";
 import {
   formatReceiptAmount,
   formatReceiptDate,
@@ -9,6 +8,7 @@ import {
   getBillNumber,
 } from "@/lib/receipt";
 import type { OrderItem, OrderWithItems } from "@/lib/types";
+import UpiPayPanel from "@/components/upi-pay-panel";
 
 type Props = {
   order: OrderWithItems;
@@ -37,15 +37,6 @@ export default function ThermalReceipt({
     (sum, item) => sum + item.item_price * item.quantity,
     0
   );
-
-  const upiLink = paymentUpiId
-    ? buildUpiDeepLink({
-        upiId: paymentUpiId,
-        payeeName: paymentPayeeName || receipt.cafeName,
-        amount: subTotal,
-        note: `Bill ${billNumber}`,
-      })
-    : null;
 
   return (
     <article className="thermal-receipt" aria-label="Bill receipt">
@@ -130,28 +121,19 @@ export default function ThermalReceipt({
         <span>{formatReceiptGrandTotal(subTotal)}</span>
       </div>
 
-      {upiLink ? (
+      {paymentUpiId ? (
         <>
           <hr className="thermal-receipt__rule" />
-          <div className="thermal-receipt__pay">
-            <a href={upiLink} className="thermal-receipt__pay-button">
-              Pay {formatReceiptGrandTotal(subTotal)} now
-            </a>
-            <p className="thermal-receipt__pay-hint">
-              Opens your UPI app (GPay, PhonePe, Paytm…)
-            </p>
-            {paymentQrUrl ? (
-              <>
-                <p className="thermal-receipt__pay-or">or scan to pay</p>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={paymentQrUrl}
-                  alt="Payment QR code"
-                  className="thermal-receipt__pay-qr"
-                />
-              </>
-            ) : null}
-          </div>
+          <UpiPayPanel
+            upi={{
+              upiId: paymentUpiId,
+              payeeName: paymentPayeeName || receipt.cafeName,
+              amount: subTotal,
+              note: `Bill ${billNumber}`,
+            }}
+            fallbackQrUrl={paymentQrUrl}
+            fallbackQrLabel={paymentQrLabel}
+          />
         </>
       ) : paymentQrUrl ? (
         <>
