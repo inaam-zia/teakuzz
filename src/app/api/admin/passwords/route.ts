@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import {
+  getPaymentQrLockCookieConfig,
   isAdminAuthenticated,
   verifyAdminPasswordAsync,
   verifyPaymentQrPasswordAsync,
@@ -70,9 +72,15 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: result.error }, { status: 503 });
       }
 
+      // Invalidate current sessions so the new password must be used to sign in again.
+      cookies().delete("cafe_admin_session");
+      const paymentLock = getPaymentQrLockCookieConfig();
+      cookies().set(paymentLock.name, paymentLock.value, paymentLock);
+
       return NextResponse.json({
         ok: true,
-        message: "Admin login password updated.",
+        logout: true,
+        message: "Admin login password updated. Please sign in again.",
       });
     }
 
@@ -90,6 +98,9 @@ export async function POST(request: Request) {
     if (result.error) {
       return NextResponse.json({ error: result.error }, { status: 503 });
     }
+
+    const paymentLock = getPaymentQrLockCookieConfig();
+    cookies().set(paymentLock.name, paymentLock.value, paymentLock);
 
     return NextResponse.json({
       ok: true,

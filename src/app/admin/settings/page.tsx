@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type Status = {
@@ -22,6 +23,7 @@ const emptyPaymentForm = {
 };
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [status, setStatus] = useState<Status | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -65,19 +67,28 @@ export default function SettingsPage() {
     const data = await res.json();
     if (!res.ok) {
       setError(data.error || "Could not update password");
-      return false;
+      return { ok: false as const, logout: false };
     }
     setSuccess(data.message || "Password updated.");
-    await loadStatus();
-    return true;
+    if (!data.logout) {
+      await loadStatus();
+    }
+    return { ok: true as const, logout: Boolean(data.logout) };
   }
 
   async function onSaveAdmin(e: React.FormEvent) {
     e.preventDefault();
     setSavingAdmin(true);
     try {
-      const ok = await changePassword("admin", adminForm);
-      if (ok) setAdminForm(emptyAdminForm);
+      const result = await changePassword("admin", adminForm);
+      if (result.ok) {
+        setAdminForm(emptyAdminForm);
+        if (result.logout) {
+          router.replace("/admin/login");
+          router.refresh();
+          return;
+        }
+      }
     } finally {
       setSavingAdmin(false);
     }
@@ -87,8 +98,8 @@ export default function SettingsPage() {
     e.preventDefault();
     setSavingPayment(true);
     try {
-      const ok = await changePassword("payment_qr", paymentForm);
-      if (ok) setPaymentForm(emptyPaymentForm);
+      const result = await changePassword("payment_qr", paymentForm);
+      if (result.ok) setPaymentForm(emptyPaymentForm);
     } finally {
       setSavingPayment(false);
     }
