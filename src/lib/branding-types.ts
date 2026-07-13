@@ -48,13 +48,48 @@ export const DEFAULT_THEME: CafeTheme = {
 };
 
 export const FONT_OPTIONS = [
-  { id: "open-sans", label: "Open Sans", css: "var(--font-open-sans), system-ui, sans-serif" },
-  { id: "dm-sans", label: "DM Sans", css: "var(--font-dm-sans), system-ui, sans-serif" },
-  { id: "inter", label: "Inter", css: "var(--font-inter), system-ui, sans-serif" },
-  { id: "poppins", label: "Poppins", css: "var(--font-poppins), system-ui, sans-serif" },
-  { id: "lora", label: "Lora", css: "var(--font-lora), Georgia, serif" },
+  {
+    id: "open-sans",
+    label: "Open Sans",
+    // Literal "Open Sans" keeps a sans fallback if the Next font var is missing
+    // (otherwise an invalid var() makes the whole font-family fall back to Times).
+    css: 'var(--font-open-sans), "Open Sans", system-ui, sans-serif',
+  },
+  {
+    id: "dm-sans",
+    label: "DM Sans",
+    css: 'var(--font-dm-sans), "DM Sans", system-ui, sans-serif',
+  },
+  {
+    id: "inter",
+    label: "Inter",
+    css: 'var(--font-inter), Inter, system-ui, sans-serif',
+  },
+  {
+    id: "poppins",
+    label: "Poppins",
+    css: 'var(--font-poppins), Poppins, system-ui, sans-serif',
+  },
+  {
+    id: "lora",
+    label: "Lora",
+    css: 'var(--font-lora), Lora, Georgia, serif',
+  },
   { id: "system", label: "System default", css: "system-ui, sans-serif" },
 ] as const;
+
+export function resolveFontFamilyId(raw?: string | null): string {
+  const id = String(raw || "").trim().toLowerCase();
+  if (FONT_OPTIONS.some((f) => f.id === id)) return id;
+  // Common aliases / mistakes from saved theme data
+  if (id.includes("open")) return "open-sans";
+  if (id.includes("dm")) return "dm-sans";
+  if (id.includes("inter")) return "inter";
+  if (id.includes("poppin")) return "poppins";
+  if (id.includes("lora")) return "lora";
+  if (id.includes("system")) return "system";
+  return "open-sans";
+}
 
 export function getDefaultBranding(): CafeBranding {
   const envName = process.env.NEXT_PUBLIC_CAFE_NAME;
@@ -67,11 +102,14 @@ export function getDefaultBranding(): CafeBranding {
 }
 
 export function mergeTheme(partial?: Partial<CafeTheme> | null): CafeTheme {
-  return { ...DEFAULT_THEME, ...(partial || {}) };
+  const merged = { ...DEFAULT_THEME, ...(partial || {}) };
+  merged.fontFamily = resolveFontFamilyId(merged.fontFamily);
+  return merged;
 }
 
 export function themeToCssVars(theme: CafeTheme): Record<string, string> {
-  const font = FONT_OPTIONS.find((f) => f.id === theme.fontFamily) || FONT_OPTIONS[0];
+  const fontId = resolveFontFamilyId(theme.fontFamily);
+  const font = FONT_OPTIONS.find((f) => f.id === fontId) || FONT_OPTIONS[0];
 
   return {
     "--brand-primary": theme.colorPrimary,

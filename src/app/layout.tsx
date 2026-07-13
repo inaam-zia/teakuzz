@@ -4,7 +4,7 @@ import { DM_Sans, Inter, Poppins, Lora, Open_Sans } from "next/font/google";
 import "./globals.css";
 import BrandingStyles from "@/components/branding-styles";
 import { getBranding } from "@/lib/branding";
-import { themeToCssVars } from "@/lib/branding-types";
+import { resolveFontFamilyId, themeToCssVars } from "@/lib/branding-types";
 
 export const dynamic = "force-dynamic";
 
@@ -16,9 +16,17 @@ export const viewport: Viewport = {
 
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans" });
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-poppins" });
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-poppins",
+});
 const lora = Lora({ subsets: ["latin"], variable: "--font-lora" });
-const openSans = Open_Sans({ subsets: ["latin"], variable: "--font-open-sans" });
+const openSans = Open_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-open-sans",
+});
 
 export async function generateMetadata(): Promise<Metadata> {
   const branding = await getBranding();
@@ -33,6 +41,24 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+function bodyFontClass(fontFamilyId: string): string {
+  switch (resolveFontFamilyId(fontFamilyId)) {
+    case "dm-sans":
+      return dmSans.className;
+    case "inter":
+      return inter.className;
+    case "poppins":
+      return poppins.className;
+    case "lora":
+      return lora.className;
+    case "system":
+      return "";
+    case "open-sans":
+    default:
+      return openSans.className;
+  }
+}
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -41,12 +67,15 @@ export default async function RootLayout({
   const branding = await getBranding();
 
   const themeStyle = themeToCssVars(branding.theme) as CSSProperties;
+  const fontClass = bodyFontClass(branding.theme.fontFamily);
 
   return (
-    <html lang="en" style={themeStyle}>
-      <body
-        className={`${dmSans.variable} ${inter.variable} ${poppins.variable} ${lora.variable} ${openSans.variable}`}
-      >
+    <html
+      lang="en"
+      className={`${dmSans.variable} ${inter.variable} ${poppins.variable} ${lora.variable} ${openSans.variable}`}
+      style={themeStyle}
+    >
+      <body className={fontClass || undefined}>
         <BrandingStyles branding={branding} />
         {children}
       </body>

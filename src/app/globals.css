@@ -18,7 +18,7 @@
     --brand-subtle: #b8834f;
     --brand-button-text: #ffffff;
     --brand-accent: #c49a6c;
-    --brand-font-family: var(--font-open-sans), system-ui, sans-serif;
+    --brand-font-family: var(--font-open-sans), "Open Sans", system-ui, sans-serif;
     --brand-font-size-base: 16px;
     --brand-font-size-heading: 24px;
     --brand-font-size-small: 14px;

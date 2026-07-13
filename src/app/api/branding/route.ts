@@ -5,6 +5,7 @@ import { clearBrandingCache, getBranding } from "@/lib/branding";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/supabase-errors";
 import type { CafeTheme } from "@/lib/branding-types";
+import { resolveFontFamilyId } from "@/lib/branding-types";
 
 export async function GET() {
   const branding = await getBranding();
@@ -45,7 +46,9 @@ export async function PATCH(request: Request) {
     }
 
     if (body.theme && typeof body.theme === "object") {
-      updates.theme = { ...current.theme, ...body.theme };
+      const nextTheme = { ...current.theme, ...body.theme };
+      nextTheme.fontFamily = resolveFontFamilyId(nextTheme.fontFamily);
+      updates.theme = nextTheme;
     }
 
     const supabase = createServerClient();
