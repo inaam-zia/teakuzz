@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { formatDateShort, formatPrice } from "@/lib/format";
 import { fetchJsonArray } from "@/lib/parse-api";
 import type { OrderStatus, OrderWithItems } from "@/lib/types";
@@ -65,6 +66,9 @@ export default function LiveOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [lowStock, setLowStock] = useState<
+    { id: string; name: string; quantity: number; unit: string }[]
+  >([]);
 
   async function loadOrders() {
     const { items, error: loadError } = await fetchJsonArray<OrderWithItems>(
@@ -75,10 +79,26 @@ export default function LiveOrdersPage() {
     setLoading(false);
   }
 
+  async function loadLowStock() {
+    try {
+      const res = await fetch("/api/admin/inventory/alerts");
+      if (!res.ok) return;
+      const data = await res.json();
+      setLowStock(data.items ?? []);
+    } catch {
+      /* ignore */
+    }
+  }
+
   useEffect(() => {
     loadOrders();
+    loadLowStock();
     const interval = setInterval(loadOrders, 8000);
-    return () => clearInterval(interval);
+    const stockInterval = setInterval(loadLowStock, 30000);
+    return () => {
+      clearInterval(interval);
+      clearInterval(stockInterval);
+    };
   }, []);
 
   async function updateStatus(orderId: string, status: OrderStatus) {
@@ -106,6 +126,25 @@ export default function LiveOrdersPage() {
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
+        </div>
+      )}
+
+      {lowStock.length > 0 && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <p className="font-semibold">
+            Inventory warning — buy{" "}
+            {lowStock
+              .slice(0, 4)
+              .map((i) => i.name)
+              .join(", ")}
+            {lowStock.length > 4 ? ` +${lowStock.length - 4} more` : ""}
+          </p>
+          <Link
+            href="/admin/inventory"
+            className="mt-1 inline-block font-medium underline underline-offset-2"
+          >
+            Open inventory
+          </Link>
         </div>
       )}
 

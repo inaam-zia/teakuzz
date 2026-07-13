@@ -5,6 +5,7 @@ import { formatPrice } from "@/lib/format";
 import { fetchMyActiveOrders, ORDER_STATUS_POLL_MS } from "@/lib/order-poll";
 import { normalizePhone, isValidPhone } from "@/lib/phone";
 import CafeBrandingBlock from "@/components/cafe-branding-block";
+import DeveloperCredit from "@/components/developer-credit";
 import LazyMenuImage from "@/components/lazy-menu-image";
 import OrderStatusView from "./order-status-view";
 import { formatOfferIncludes } from "@/lib/offers";
@@ -988,6 +989,7 @@ export default function OrderClient({
           )}
         </div>
       )}
+      <DeveloperCredit className="px-5 pb-2 pt-6" />
     </main>
   );
 }

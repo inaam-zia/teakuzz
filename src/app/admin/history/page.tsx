@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import ThermalReceipt from "@/components/thermal-receipt";
+import { downloadOrderHistoryExcel } from "@/lib/export-history-excel";
 import { formatDate, formatPrice } from "@/lib/format";
 import { fetchJsonArray } from "@/lib/parse-api";
 import type { CafeBranding } from "@/lib/branding-types";
@@ -38,6 +39,15 @@ export default function HistoryPage() {
     setOrders(items);
     setError(loadError);
     setLoading(false);
+  }
+
+  function downloadExcel() {
+    if (!orders.length) return;
+    const parts = ["order-history"];
+    if (from) parts.push(`from-${from}`);
+    if (to) parts.push(`to-${to}`);
+    if (table) parts.push(`table-${table}`);
+    downloadOrderHistoryExcel(orders, `${parts.join("-")}.xlsx`);
   }
 
   useEffect(() => {
@@ -89,10 +99,11 @@ export default function HistoryPage() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => loadHistory()} className="btn-primary">
+          <button type="button" onClick={() => loadHistory()} className="btn-primary">
             Search
           </button>
           <button
+            type="button"
             onClick={() => {
               const now = new Date();
               const monthAgo = new Date(now);
@@ -108,6 +119,7 @@ export default function HistoryPage() {
             Last 30 days
           </button>
           <button
+            type="button"
             onClick={() => {
               setFrom("");
               setTo("");
@@ -117,6 +129,19 @@ export default function HistoryPage() {
             className="btn-secondary"
           >
             Clear filters
+          </button>
+          <button
+            type="button"
+            onClick={downloadExcel}
+            className="btn-secondary"
+            disabled={loading || orders.length === 0}
+            title={
+              orders.length === 0
+                ? "Search for orders first"
+                : `Download ${orders.length} orders as Excel`
+            }
+          >
+            Download Excel
           </button>
         </div>
       </div>
@@ -133,7 +158,16 @@ export default function HistoryPage() {
         <div className="card py-12 text-center text-cafe-500">No orders found</div>
       ) : (
         <div className="space-y-3">
-          <p className="text-sm text-cafe-500">{orders.length} orders</p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-cafe-500">{orders.length} orders</p>
+            <button
+              type="button"
+              onClick={downloadExcel}
+              className="btn-secondary text-sm"
+            >
+              Download Excel
+            </button>
+          </div>
           {orders.map((order) => (
             <div key={order.id} className="card">
               <div className="flex flex-wrap items-start justify-between gap-3">

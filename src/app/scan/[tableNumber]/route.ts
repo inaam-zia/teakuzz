@@ -15,6 +15,8 @@ type RouteContext = { params: { tableNumber: string } };
 export async function GET(request: Request, { params }: RouteContext) {
   const tableNumber = parseInt(params.tableNumber, 10);
   const origin = new URL(request.url).origin;
+  const url = new URL(request.url);
+  const qrTokenParam = url.searchParams.get("t");
 
   if (isNaN(tableNumber) || tableNumber < 1 || tableNumber > 99) {
     return NextResponse.redirect(new URL("/", origin));
@@ -26,6 +28,15 @@ export async function GET(request: Request, { params }: RouteContext) {
   }
 
   const dbSession = await getTableSessionFromDb(tableNumber);
+
+  // If this table has a QR token, only the matching printed code may unlock it
+  if (dbSession?.qrToken) {
+    if (!qrTokenParam || qrTokenParam !== dbSession.qrToken) {
+      return NextResponse.redirect(
+        new URL(`/order/${tableNumber}?blocked=1&reason=stale_qr`, origin)
+      );
+    }
+  }
 
   if (dbSession?.sessionId) {
     const customer = getTableCustomerFromCookie();

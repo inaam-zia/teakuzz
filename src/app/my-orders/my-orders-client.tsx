@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import DeveloperCredit from "@/components/developer-credit";
 import { formatDate, formatPrice } from "@/lib/format";
 import { isValidEmail, normalizeEmail } from "@/lib/email";
 import { normalizePhone } from "@/lib/phone";
@@ -446,6 +447,7 @@ export default function MyOrdersClient({ cafeName }: Props) {
             ← Back to home
           </Link>
         </p>
+        <DeveloperCredit className="mt-4" />
       </div>
     </main>
   );

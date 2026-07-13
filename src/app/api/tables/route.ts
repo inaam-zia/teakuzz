@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase";
 import { formatSupabaseError } from "@/lib/supabase-errors";
+import { newQrToken } from "@/lib/table-session";
 import type { CafeTable } from "@/lib/types";
 
 export async function GET() {
@@ -66,11 +67,24 @@ export async function POST(request: Request) {
     }
 
     const supabase = createServerClient();
-    const { data, error } = await supabase
+    const qrToken = newQrToken();
+
+    let { data, error } = await supabase
       .from("cafe_tables")
-      .insert({ table_number: tableNumber, enabled: true })
+      .insert({ table_number: tableNumber, enabled: true, qr_token: qrToken })
       .select()
       .single();
+
+    // Column may not exist yet — create without token
+    if (error?.message.includes("qr_token")) {
+      const fallback = await supabase
+        .from("cafe_tables")
+        .insert({ table_number: tableNumber, enabled: true })
+        .select()
+        .single();
+      data = fallback.data;
+      error = fallback.error;
+    }
 
     if (error) {
       if (error.message.includes("duplicate") || error.code === "23505") {

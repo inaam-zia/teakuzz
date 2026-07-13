@@ -12,6 +12,7 @@ import {
 } from "@/lib/table-session";
 import type { PlaceOrderPayload } from "@/lib/types";
 import { buildComboOrderName, getOfferById } from "@/lib/offers";
+import { deductAndLogForOrder } from "@/lib/inventory";
 
 export async function GET(request: Request) {
   if (!isAdminAuthenticated()) {
@@ -127,6 +128,7 @@ export async function POST(request: Request) {
     }
 
     const orderLines: { item_name: string; item_price: number; quantity: number }[] = [];
+    const stockUsages: { menuItemId: string; quantity: number }[] = [];
 
     if (menuPayload.length) {
       const menuIds = menuPayload.map((i) => i.menuItemId);
@@ -150,6 +152,10 @@ export async function POST(request: Request) {
         orderLines.push({
           item_name: menuItem.name,
           item_price: menuItem.price,
+          quantity: item.quantity,
+        });
+        stockUsages.push({
+          menuItemId: item.menuItemId,
           quantity: item.quantity,
         });
       }
@@ -179,6 +185,13 @@ export async function POST(request: Request) {
         item_price: offer.price,
         quantity: line.quantity,
       });
+
+      for (const oi of offer.offer_items) {
+        stockUsages.push({
+          menuItemId: oi.menu_item_id,
+          quantity: oi.quantity * line.quantity,
+        });
+      }
     }
 
     if (!orderLines.length) {
@@ -214,6 +227,13 @@ export async function POST(request: Request) {
 
     if (itemsError) {
       return NextResponse.json({ error: formatSupabaseError(itemsError) }, { status: 500 });
+    }
+
+    // Deduct recipe ingredients from inventory (non-blocking for the customer)
+    try {
+      await deductAndLogForOrder(order.id, stockUsages);
+    } catch (err) {
+      console.error("[inventory] deduct after order failed:", err);
     }
 
     cookies().set(getRecentOrderCookieConfig(order.id));

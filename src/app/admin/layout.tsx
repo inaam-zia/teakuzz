@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import DeveloperCredit from "@/components/developer-credit";
 import { PaymentLockProvider, usePaymentLock } from "./payment-lock-context";
 import { NewOrdersProvider, useNewOrders } from "./new-orders-context";
 
@@ -20,6 +21,8 @@ const links = [
   { href: "/admin/customers", label: "Customers" },
   { href: "/admin/menu", label: "Menu" },
   { href: "/admin/offers", label: "Offers" },
+  { href: "/admin/inventory", label: "Inventory" },
+  { href: "/admin/recipes", label: "Recipes" },
   { href: "/admin/insights", label: "Insights" },
   { href: "/admin/tables", label: "Table QR" },
   { href: "/admin/branding", label: "Appearance" },
@@ -56,6 +59,27 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const { unlocked, setUnlocked } = usePaymentLock();
   const { newOrderCount } = useNewOrders();
   const prevPathRef = useRef(pathname);
+  const [lowStockCount, setLowStockCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadAlerts() {
+      try {
+        const res = await fetch("/api/admin/inventory/alerts");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setLowStockCount(Number(data.count) || 0);
+      } catch {
+        /* ignore — table may not exist yet */
+      }
+    }
+    loadAlerts();
+    const interval = setInterval(loadAlerts, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [pathname]);
 
   // Re-lock the payment QR section whenever the admin leaves it.
   useEffect(() => {
@@ -94,6 +118,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             const active = pathname === link.href;
             const isPayment = link.href === PAYMENT_PATH;
             const isLiveOrders = link.href === "/admin/orders";
+            const isInventory = link.href === "/admin/inventory";
             return (
               <Link
                 key={link.href}
@@ -109,6 +134,14 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                     {newOrderCount > 99 ? "99+" : newOrderCount}
                   </span>
                 )}
+                {isInventory && lowStockCount > 0 && (
+                  <span
+                    className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white"
+                    title={`${lowStockCount} low-stock item${lowStockCount === 1 ? "" : "s"}`}
+                  >
+                    {lowStockCount > 99 ? "99+" : lowStockCount}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -117,6 +150,9 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       <main className="mx-auto max-w-5xl px-4 py-6 [padding-bottom:calc(1.5rem+env(safe-area-inset-bottom))]">
         {children}
       </main>
+      <footer className="mx-auto max-w-5xl px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2">
+        <DeveloperCredit />
+      </footer>
     </div>
   );
 }
@@ -125,7 +161,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
 
   if (pathname === "/admin/login") {
-    return <div style={adminFontStyle}>{children}</div>;
+    return (
+      <div style={adminFontStyle} className="flex min-h-screen flex-col">
+        <div className="flex-1">{children}</div>
+        <footer className="px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2">
+          <DeveloperCredit />
+        </footer>
+      </div>
+    );
   }
 
   return (

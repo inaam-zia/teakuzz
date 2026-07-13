@@ -1,5 +1,6 @@
 import Link from "next/link";
 import CafeBrandingBlock from "@/components/cafe-branding-block";
+import DeveloperCredit from "@/components/developer-credit";
 import { getBranding } from "@/lib/branding";
 
 export default async function HomePage() {
@@ -18,6 +19,7 @@ export default async function HomePage() {
           Admin login
         </Link>
       </div>
+      <DeveloperCredit className="mt-8" />
     </main>
   );
 }

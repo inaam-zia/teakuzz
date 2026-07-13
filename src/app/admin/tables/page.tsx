@@ -8,9 +8,12 @@ export default function TablesPage() {
   const [tables, setTables] = useState<CafeTable[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [newTableNumber, setNewTableNumber] = useState("");
   const [adding, setAdding] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [qrBump, setQrBump] = useState(0);
 
   async function loadTables() {
     setError("");
@@ -42,6 +45,7 @@ export default function TablesPage() {
     e.preventDefault();
     setAdding(true);
     setError("");
+    setSuccess("");
 
     const res = await fetch("/api/tables", {
       method: "POST",
@@ -63,6 +67,7 @@ export default function TablesPage() {
 
   async function toggleEnabled(table: CafeTable) {
     setError("");
+    setSuccess("");
     const res = await fetch(`/api/tables/${table.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -82,6 +87,7 @@ export default function TablesPage() {
     if (!confirm(`Remove Table ${table.table_number}? Its QR will stop working.`)) return;
 
     setError("");
+    setSuccess("");
     const res = await fetch(`/api/tables/${table.id}`, { method: "DELETE" });
 
     const data = await res.json();
@@ -104,6 +110,7 @@ export default function TablesPage() {
     }
 
     setError("");
+    setSuccess("");
     const res = await fetch(`/api/tables/${table.id}/clear-session`, { method: "POST" });
     const data = await res.json();
 
@@ -112,12 +119,56 @@ export default function TablesPage() {
       return;
     }
 
+    setSuccess(data.message || "Table ready for new guests.");
     await loadTables();
   }
 
+  async function regenerateQr(table: CafeTable) {
+    if (
+      !confirm(
+        `Generate a new QR for Table ${table.table_number}?\n\nOld printed / saved QR codes for this table will stop working. Print or show the new QR after.`
+      )
+    ) {
+      return;
+    }
+
+    setError("");
+    setSuccess("");
+    setBusyId(table.id);
+
+    try {
+      const res = await fetch(`/api/tables/${table.id}/regenerate-qr`, {
+        method: "POST",
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Could not generate new QR");
+        return;
+      }
+
+      if (data.table) {
+        setTables((prev) =>
+          prev.map((t) => (t.id === table.id ? { ...t, ...data.table } : t))
+        );
+      } else {
+        await loadTables();
+      }
+
+      setQrBump((n) => n + 1);
+      setExpandedId(table.id);
+      setSuccess(
+        data.message ||
+          `New QR ready for Table ${table.table_number}. Print it to replace the old one.`
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   function printQr(table: CafeTable) {
-    const scanUrl = getScanUrl(table.table_number);
-    const qrSrc = `/api/tables/qr?number=${table.table_number}&t=${Date.now()}`;
+    const scanUrl = getScanUrl(table.table_number, table.qr_token);
+    const qrSrc = `/api/tables/qr?number=${table.table_number}&t=${Date.now()}&b=${qrBump}`;
     const win = window.open("", "_blank");
     if (!win) return;
 
@@ -149,13 +200,18 @@ export default function TablesPage() {
       <div>
         <h2 className="text-2xl font-bold text-cafe-900">Table QR codes</h2>
         <p className="text-cafe-600">
-          Add tables, print QR codes, and disable ones you&apos;re not using.
+          Add tables, print QR codes, and generate a new QR if an old print is lost or shared.
         </p>
       </div>
 
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
+        </div>
+      )}
+      {success && (
+        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          {success}
         </div>
       )}
 
@@ -194,7 +250,9 @@ export default function TablesPage() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-lg font-bold text-cafe-900">Table {table.table_number}</p>
-                  <p className="break-all text-sm text-cafe-500">{getScanUrl(table.table_number)}</p>
+                  <p className="break-all text-sm text-cafe-500">
+                    {getScanUrl(table.table_number, table.qr_token)}
+                  </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span
@@ -231,6 +289,14 @@ export default function TablesPage() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => regenerateQr(table)}
+                    disabled={busyId === table.id}
+                    className="btn-secondary text-sm"
+                  >
+                    {busyId === table.id ? "Generating…" : "Generate new QR"}
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => printQr(table)}
                     className="btn-primary text-sm"
                   >
@@ -250,13 +316,21 @@ export default function TablesPage() {
                 <div className="flex flex-col items-center rounded-xl border border-cafe-200 bg-cafe-50 p-6">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={`/api/tables/qr?number=${table.table_number}`}
+                    key={`${table.id}-${table.qr_token ?? "legacy"}-${qrBump}`}
+                    src={`/api/tables/qr?number=${table.table_number}&b=${qrBump}&v=${encodeURIComponent(table.qr_token || "legacy")}`}
                     alt={`QR code for table ${table.table_number}`}
                     className="h-48 w-48 rounded-lg bg-white p-2 shadow-sm"
                   />
                   <p className="mt-3 text-sm text-cafe-600">
                     Customers scan this to open the menu for Table {table.table_number}
                   </p>
+                  <button
+                    type="button"
+                    onClick={() => printQr(table)}
+                    className="btn-primary mt-3 text-sm"
+                  >
+                    Print this QR
+                  </button>
                 </div>
               )}
             </div>

@@ -20,6 +20,8 @@ export type CafeTable = {
   table_number: number;
   enabled: boolean;
   session_id?: string;
+  /** When set, scan URL must include ?t= this value or the QR is rejected */
+  qr_token?: string | null;
   created_at: string;
 };
 
@@ -86,4 +88,36 @@ export type PlaceOrderPayload = {
   customerPhone: string;
   items: { menuItemId: string; quantity: number }[];
   offers?: { offerId: string; quantity: number }[];
+};
+
+export type InventoryItem = {
+  id: string;
+  name: string;
+  unit: string;
+  quantity: number;
+  low_stock_threshold: number;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type RecipeIngredient = {
+  id: string;
+  recipe_id: string;
+  inventory_item_id: string;
+  quantity_needed: number;
+  inventory_item?: Pick<
+    InventoryItem,
+    "id" | "name" | "unit" | "quantity" | "low_stock_threshold"
+  >;
+};
+
+export type Recipe = {
+  id: string;
+  menu_item_id: string;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+  menu_item?: Pick<MenuItem, "id" | "name" | "price" | "available" | "image_url">;
+  ingredients: RecipeIngredient[];
 };

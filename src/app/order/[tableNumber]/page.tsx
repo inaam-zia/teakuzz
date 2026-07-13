@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import DeveloperCredit from "@/components/developer-credit";
 import OrderClient from "./order-client";
 import { getBranding } from "@/lib/branding";
 import { listOffers } from "@/lib/offers";
@@ -22,26 +23,28 @@ export default async function OrderPage({ params }: Props) {
 
   if (!access.ok && access.reason === "disabled") {
     return (
-      <main className="order-bg flex min-h-screen items-center justify-center px-5">
+      <main className="order-bg flex min-h-screen flex-col items-center justify-center px-5">
         <div className="order-hero-card w-full max-w-lg text-center">
           <h1 className="text-2xl font-bold text-cafe-900">Table unavailable</h1>
           <p className="mt-2 text-cafe-600">
             Table {tableNumber} is currently disabled. Please ask staff for assistance.
           </p>
         </div>
+        <DeveloperCredit className="mt-8" />
       </main>
     );
   }
 
   if (!access.ok && access.reason === "not_found") {
     return (
-      <main className="order-bg flex min-h-screen items-center justify-center px-5">
+      <main className="order-bg flex min-h-screen flex-col items-center justify-center px-5">
         <div className="order-hero-card w-full max-w-lg text-center">
           <h1 className="text-2xl font-bold text-cafe-900">Invalid table</h1>
           <p className="mt-2 text-cafe-600">
             This QR code doesn&apos;t match an active table. Please scan the code on your table.
           </p>
         </div>
+        <DeveloperCredit className="mt-8" />
       </main>
     );
   }
@@ -55,13 +58,14 @@ export default async function OrderPage({ params }: Props) {
         : "Please scan the QR code on your table to order. Typing the link won&apos;t work.";
 
     return (
-      <main className="order-bg flex min-h-screen items-center justify-center px-5">
+      <main className="order-bg flex min-h-screen flex-col items-center justify-center px-5">
         <div className="order-hero-card w-full max-w-lg text-center">
           <p className="text-4xl">📱</p>
           <h1 className="mt-4 text-2xl font-bold text-cafe-900">Scan the table QR</h1>
           <p className="mt-2 text-cafe-600">{message}</p>
           <p className="mt-4 text-sm text-cafe-500">Table {tableNumber}</p>
         </div>
+        <DeveloperCredit className="mt-8" />
       </main>
     );
   }

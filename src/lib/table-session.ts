@@ -74,15 +74,35 @@ function decodeToken<T extends { exp: number }>(token: string): T | null {
 
 export async function getTableSessionFromDb(
   tableNumber: number
-): Promise<{ sessionId: string; enabled: boolean } | null> {
+): Promise<{ sessionId: string; enabled: boolean; qrToken: string | null } | null> {
   if (!isSupabaseConfigured()) return null;
 
   const supabase = createServerClient();
   const { data, error } = await supabase
     .from("cafe_tables")
-    .select("session_id, enabled")
+    .select("session_id, enabled, qr_token")
     .eq("table_number", tableNumber)
     .maybeSingle();
+
+  // Older DBs without qr_token column — retry without it
+  if (error?.message?.includes("qr_token")) {
+    const fallback = await supabase
+      .from("cafe_tables")
+      .select("session_id, enabled")
+      .eq("table_number", tableNumber)
+      .maybeSingle();
+
+    if (fallback.error?.message?.includes("session_id")) {
+      return null;
+    }
+    if (fallback.error || !fallback.data) return null;
+
+    return {
+      sessionId: fallback.data.session_id as string,
+      enabled: fallback.data.enabled as boolean,
+      qrToken: null,
+    };
+  }
 
   if (error?.message?.includes("session_id")) {
     return null;
@@ -93,6 +113,7 @@ export async function getTableSessionFromDb(
   return {
     sessionId: data.session_id as string,
     enabled: data.enabled as boolean,
+    qrToken: (data.qr_token as string | null) ?? null,
   };
 }
 
@@ -293,4 +314,9 @@ export async function getSavedCustomerForTable(tableNumber: number): Promise<{
 
 export function newSessionId(): string {
   return randomUUID();
+}
+
+/** Short opaque token embedded in printed QR codes. */
+export function newQrToken(): string {
+  return randomUUID().replace(/-/g, "");
 }

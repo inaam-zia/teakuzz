@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import CafeBrandingBlock from "@/components/cafe-branding-block";
+import DeveloperCredit from "@/components/developer-credit";
 import ThermalReceipt from "@/components/thermal-receipt";
 import { formatPrice } from "@/lib/format";
 import { fetchMyActiveOrders, ORDER_STATUS_POLL_MS } from "@/lib/order-poll";
@@ -446,6 +447,7 @@ export default function OrderStatusView({ tableNumber, customerName, branding, o
           Status updates every few seconds
         </p>
       </div>
+      <DeveloperCredit className="mt-8" />
     </main>
   );
 }

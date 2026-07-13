@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import QRCode from "qrcode";
 import { isAdminAuthenticated } from "@/lib/auth";
+import { createServerClient, isSupabaseConfigured } from "@/lib/supabase";
 import { getScanUrl } from "@/lib/site-url";
 
 export async function GET(request: Request) {
@@ -16,7 +17,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Invalid table number" }, { status: 400 });
   }
 
-  const scanUrl = getScanUrl(tableNumber);
+  let qrToken: string | null = null;
+  if (isSupabaseConfigured()) {
+    const supabase = createServerClient();
+    const { data } = await supabase
+      .from("cafe_tables")
+      .select("qr_token")
+      .eq("table_number", tableNumber)
+      .maybeSingle();
+    qrToken = (data?.qr_token as string | null) ?? null;
+  }
+
+  const scanUrl = getScanUrl(tableNumber, qrToken);
   const png = await QRCode.toBuffer(scanUrl, {
     width: 400,
     margin: 2,
