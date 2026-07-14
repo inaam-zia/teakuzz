@@ -422,7 +422,7 @@
   }
 
   .thermal-receipt__pay-qr {
-    @apply mx-auto my-2 h-28 w-28 object-contain;
+    @apply mx-auto my-2 h-36 w-36 object-contain;
   }
 
   .thermal-receipt__pay-amount {
@@ -489,6 +489,42 @@
 
   .upi-sheet__cancel {
     @apply mt-3 w-full rounded-xl px-4 py-2.5 text-sm font-medium text-neutral-600;
+  }
+
+  .upi-sheet__qr-wrap {
+    @apply mt-3 text-center;
+  }
+
+  .upi-sheet__qr {
+    @apply mx-auto h-44 w-44 rounded-lg bg-white object-contain;
+  }
+
+  .upi-sheet__steps {
+    @apply mt-3 text-left text-xs leading-relaxed text-neutral-600;
+  }
+
+  .upi-sheet__copy-row {
+    @apply mt-4 grid gap-2 sm:grid-cols-2;
+  }
+
+  .upi-sheet__copy-block {
+    @apply rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-left;
+  }
+
+  .upi-sheet__copy-label {
+    @apply text-[10px] font-bold uppercase tracking-wide text-neutral-500;
+  }
+
+  .upi-sheet__copy-value {
+    @apply mt-0.5 break-all text-sm font-semibold text-neutral-900;
+  }
+
+  .upi-sheet__copy-btn {
+    @apply mt-2 text-xs font-semibold text-neutral-700 underline underline-offset-2;
+  }
+
+  .upi-sheet__payee {
+    @apply mt-3 text-center text-xs text-neutral-500;
   }
 
   .bulk-photo-modal-backdrop {

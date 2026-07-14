@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { buildUpiAppLinks, type UpiPayParams } from "@/lib/payment-qr";
+import type { UpiPayParams } from "@/lib/payment-qr";
 import { formatReceiptGrandTotal } from "@/lib/receipt";
 
 type Props = {
@@ -12,6 +12,31 @@ type Props = {
   fallbackQrLabel?: string | null;
 };
 
+async function copyText(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    /* fall through */
+  }
+  try {
+    const el = document.createElement("textarea");
+    el.value = text;
+    el.setAttribute("readonly", "");
+    el.style.position = "fixed";
+    el.style.left = "-9999px";
+    document.body.appendChild(el);
+    el.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(el);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 export default function UpiPayPanel({
   upi,
   fallbackQrUrl,
@@ -20,8 +45,9 @@ export default function UpiPayPanel({
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [amountQrUrl, setAmountQrUrl] = useState<string | null>(null);
-  const apps = buildUpiAppLinks(upi);
+  const [copied, setCopied] = useState<"upi" | "amount" | null>(null);
   const amountLabel = formatReceiptGrandTotal(upi.amount);
+  const amountPlain = upi.amount.toFixed(2);
 
   useEffect(() => {
     setMounted(true);
@@ -50,7 +76,7 @@ export default function UpiPayPanel({
     setAmountQrUrl(null);
     const params = new URLSearchParams({
       pa: upi.upiId,
-      am: upi.amount.toFixed(2),
+      am: amountPlain,
     });
     if (upi.payeeName) params.set("pn", upi.payeeName);
     if (upi.note) params.set("tn", upi.note);
@@ -70,16 +96,24 @@ export default function UpiPayPanel({
         if (url) setAmountQrUrl(url);
       })
       .catch(() => {
-        /* ignore — fallback QR / app links still work */
+        /* ignore */
       });
 
     return () => {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [upi.upiId, upi.amount, upi.payeeName, upi.note]);
+  }, [upi.upiId, amountPlain, upi.payeeName, upi.note]);
 
   const qrSrc = amountQrUrl || fallbackQrUrl || null;
+
+  async function handleCopy(kind: "upi" | "amount") {
+    const text = kind === "upi" ? upi.upiId : amountPlain;
+    const ok = await copyText(text);
+    if (!ok) return;
+    setCopied(kind);
+    window.setTimeout(() => setCopied(null), 2000);
+  }
 
   const sheet =
     open && mounted
@@ -99,26 +133,72 @@ export default function UpiPayPanel({
               <h3 id="upi-sheet-title" className="upi-sheet__title">
                 Pay {amountLabel}
               </h3>
-              <p className="upi-sheet__hint">Open with</p>
-              <ul className="upi-sheet__list">
-                {apps.map((app) => (
-                  <li key={app.id}>
-                    <a
-                      href={app.href}
-                      className="upi-sheet__app"
-                      onClick={() => setOpen(false)}
-                    >
-                      {app.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+              <p className="upi-sheet__hint">
+                Opening GPay / PhonePe from the browser often fails for security.
+                Use scan or copy instead.
+              </p>
+
+              {qrSrc ? (
+                <div className="upi-sheet__qr-wrap">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={qrSrc}
+                    alt={`Scan to pay ${amountLabel}`}
+                    className="upi-sheet__qr"
+                  />
+                  <p className="upi-sheet__steps">
+                    1. Open GPay, PhonePe, or Paytm
+                    <br />
+                    2. Tap Scan QR
+                    <br />
+                    3. Amount {amountLabel} is already filled
+                  </p>
+                </div>
+              ) : (
+                <p className="upi-sheet__hint">
+                  Scan QR is unavailable — copy UPI ID and amount below.
+                </p>
+              )}
+
+              <div className="upi-sheet__copy-row">
+                <div className="upi-sheet__copy-block">
+                  <p className="upi-sheet__copy-label">UPI ID</p>
+                  <p className="upi-sheet__copy-value">{upi.upiId}</p>
+                  <button
+                    type="button"
+                    className="upi-sheet__copy-btn"
+                    onClick={() => handleCopy("upi")}
+                  >
+                    {copied === "upi" ? "Copied" : "Copy UPI ID"}
+                  </button>
+                </div>
+                <div className="upi-sheet__copy-block">
+                  <p className="upi-sheet__copy-label">Amount</p>
+                  <p className="upi-sheet__copy-value">₹{amountPlain}</p>
+                  <button
+                    type="button"
+                    className="upi-sheet__copy-btn"
+                    onClick={() => handleCopy("amount")}
+                  >
+                    {copied === "amount" ? "Copied" : "Copy amount"}
+                  </button>
+                </div>
+              </div>
+
+              {upi.payeeName ? (
+                <p className="upi-sheet__payee">Pay to: {upi.payeeName}</p>
+              ) : null}
+
+              {!amountQrUrl && fallbackQrLabel ? (
+                <p className="upi-sheet__hint">{fallbackQrLabel}</p>
+              ) : null}
+
               <button
                 type="button"
                 className="upi-sheet__cancel"
                 onClick={() => setOpen(false)}
               >
-                Cancel
+                Close
               </button>
             </div>
           </div>,
@@ -133,15 +213,15 @@ export default function UpiPayPanel({
         className="thermal-receipt__pay-button"
         onClick={() => setOpen(true)}
       >
-        Pay {amountLabel} now
+        Pay {amountLabel}
       </button>
       <p className="thermal-receipt__pay-hint">
-        Choose GPay, PhonePe, Paytm, or any UPI app — amount is filled in
+        Scan QR in your UPI app — more reliable than opening the app from here
       </p>
 
       {qrSrc ? (
         <>
-          <p className="thermal-receipt__pay-or">or scan to pay {amountLabel}</p>
+          <p className="thermal-receipt__pay-or">scan with any UPI app</p>
           {fallbackQrLabel && !amountQrUrl ? (
             <p className="thermal-receipt__pay-label">{fallbackQrLabel}</p>
           ) : null}
@@ -153,9 +233,13 @@ export default function UpiPayPanel({
           />
           {amountQrUrl ? (
             <p className="thermal-receipt__pay-hint">
-              This QR includes your bill amount
+              Amount {amountLabel} is included in this QR
             </p>
-          ) : null}
+          ) : (
+            <p className="thermal-receipt__pay-hint">
+              Enter {amountLabel} after scanning
+            </p>
+          )}
         </>
       ) : null}
 
