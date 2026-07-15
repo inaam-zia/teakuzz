@@ -136,12 +136,8 @@ export default function SettingsPage() {
     const cleaned = gstin.trim().toUpperCase().replace(/\s+/g, "");
     const cgst = Number(cgstPercent);
     const sgst = Number(sgstPercent);
-    if (gstEnabled && !cleaned) {
-      setError("Enter your GSTIN to enable GST on bills.");
-      return;
-    }
-    if (gstEnabled && cleaned.length !== 15) {
-      setError("GSTIN must be 15 characters (e.g. 22AAAAA0000A1Z5).");
+    if (gstEnabled && cleaned && cleaned.length !== 15) {
+      setError("GSTIN must be 15 characters (e.g. 22AAAAA0000A1Z5), or leave it blank.");
       return;
     }
     if (
@@ -157,7 +153,7 @@ export default function SettingsPage() {
       return;
     }
     if (gstEnabled && cgst <= 0 && sgst <= 0) {
-      setError("Set at least one of CGST % or SGST % greater than 0.");
+      setError("Set CGST % and/or SGST % (e.g. 2.5 and 2.5) to show tax on bills.");
       return;
     }
 
@@ -224,7 +220,7 @@ export default function SettingsPage() {
         <div>
           <h3 className="font-bold text-brand-heading">GST</h3>
           <p className="mt-1 text-sm text-brand-muted">
-            When enabled, bills show GSTIN and add CGST + SGST on the subtotal
+            When enabled, bills add CGST + SGST lines on the subtotal
             (same style as a tax invoice).
           </p>
         </div>
@@ -255,7 +251,7 @@ export default function SettingsPage() {
             autoComplete="off"
           />
           <p className="mt-1 text-xs text-brand-muted">
-            15-character GST Identification Number.
+            Optional 15-character GSTIN. Shown on the bill header when set.
           </p>
         </div>
 
@@ -381,7 +377,9 @@ export default function SettingsPage() {
         <div>
           <h3 className="font-bold text-brand-heading">Payment QR password</h3>
           <p className="mt-1 text-sm text-brand-muted">
-            Extra lock for the Payment QR section.
+            Extra lock for sensitive admin sections (Offers, Inventory, Recipes,
+            Insights, Table QR, Appearance, Payment QR, History, Settings). Live
+            orders, Dashboard, Customers, and Menu stay open.
             {status?.paymentQrPasswordCustomized
               ? " Currently using a password saved from Settings."
               : " If not set here, the admin password (or PAYMENT_QR_PASSWORD env) is used."}

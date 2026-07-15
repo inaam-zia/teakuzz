@@ -14,10 +14,6 @@ export default function PaymentQrPage() {
   const [payeeName, setPayeeName] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [locked, setLocked] = useState(false);
-  const [unlockPassword, setUnlockPassword] = useState("");
-  const [unlockError, setUnlockError] = useState("");
-  const [unlocking, setUnlocking] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editUpiId, setEditUpiId] = useState("");
   const [editPayeeName, setEditPayeeName] = useState("");
@@ -27,7 +23,6 @@ export default function PaymentQrPage() {
     const res = await fetch("/api/admin/payment-qr");
 
     if (res.status === 403) {
-      setLocked(true);
       setUnlocked(false);
       setCodes([]);
       return;
@@ -38,43 +33,17 @@ export default function PaymentQrPage() {
       setError(data.error || "Could not load payment QR codes");
       return;
     }
-    setLocked(false);
-    setUnlocked(true);
     setCodes(data.codes ?? []);
   }
 
   useEffect(() => {
     load().finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  async function unlock(e: React.FormEvent) {
-    e.preventDefault();
-    setUnlocking(true);
-    setUnlockError("");
-
-    const res = await fetch("/api/admin/payment-qr/unlock", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: unlockPassword }),
-    });
-    const data = await res.json();
-    setUnlocking(false);
-
-    if (!res.ok) {
-      setUnlockError(data.error || "Wrong password");
-      return;
-    }
-
-    setUnlockPassword("");
-    setLocked(false);
-    setUnlocked(true);
-    await load();
-  }
 
   async function lock() {
     await fetch("/api/admin/payment-qr/unlock", { method: "DELETE" });
     setCodes([]);
-    setLocked(true);
     setUnlocked(false);
     setSuccess("");
     setError("");
@@ -167,46 +136,6 @@ export default function PaymentQrPage() {
     return <p className="text-brand-muted">Loading…</p>;
   }
 
-  if (locked) {
-    return (
-      <div className="mx-auto max-w-md space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold text-brand-heading">Payment QR</h2>
-          <p className="text-brand-muted">
-            This section is locked. Enter the payment QR password to manage payment codes.
-          </p>
-        </div>
-
-        <form onSubmit={unlock} className="card space-y-4">
-          <div>
-            <label
-              htmlFor="payment-qr-password"
-              className="mb-1 block text-sm font-medium text-brand-muted"
-            >
-              Payment QR password
-            </label>
-            <input
-              id="payment-qr-password"
-              type="password"
-              value={unlockPassword}
-              onChange={(e) => setUnlockPassword(e.target.value)}
-              className="input-field"
-              placeholder="Enter password"
-              autoFocus
-              required
-            />
-          </div>
-
-          {unlockError && <p className="text-sm text-red-600">{unlockError}</p>}
-
-          <button type="submit" disabled={unlocking} className="btn-primary w-full">
-            {unlocking ? "Unlocking…" : "Unlock"}
-          </button>
-        </form>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -218,7 +147,7 @@ export default function PaymentQrPage() {
           </p>
         </div>
         <button type="button" onClick={lock} className="btn-secondary shrink-0">
-          Lock
+          Lock sections
         </button>
       </div>
 

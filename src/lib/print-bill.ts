@@ -64,13 +64,16 @@ export function printThermalBill(receiptEl: HTMLElement | null, title = "Bill") 
       font-weight: 700;
       letter-spacing: 0.02em;
     }
+    .thermal-receipt__qty-line {
+      margin-bottom: 4px;
+      font-size: 10px;
+    }
     .thermal-receipt__gst-line {
       display: flex;
       justify-content: space-between;
       gap: 8px;
-      margin-top: 4px;
+      margin-top: 2px;
       font-size: 11px;
-      font-weight: 600;
     }
     .thermal-receipt__rule {
       margin: 8px 0;
@@ -115,7 +118,10 @@ export function printThermalBill(receiptEl: HTMLElement | null, title = "Bill") 
       gap: 8px;
       font-weight: 700;
     }
-    .thermal-receipt__grand-total { font-size: 12px; }
+    .thermal-receipt__grand-total {
+      margin-top: 4px;
+      font-size: 12px;
+    }
     .thermal-receipt__thanks {
       margin-top: 8px;
       text-align: center;

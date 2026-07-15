@@ -64,7 +64,8 @@ function rowToBranding(row: SettingsRow, defaults: CafeBranding): CafeBranding {
     logoUrl: row.logo_url || null,
     tagline: row.tagline?.trim() || defaults.tagline,
     theme: mergeTheme(row.theme),
-    gstEnabled: Boolean(row.gst_enabled) && Boolean(gstin),
+    // Tax lines depend on enable + rates; GSTIN is optional display
+    gstEnabled: Boolean(row.gst_enabled),
     gstin,
     cgstPercent,
     sgstPercent,

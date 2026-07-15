@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import DeveloperCredit from "@/components/developer-credit";
+import SensitiveAdminGate from "@/components/sensitive-admin-gate";
+import { isSensitiveAdminPath } from "@/lib/admin-sensitive-paths";
 import { PaymentLockProvider, usePaymentLock } from "./payment-lock-context";
 import { NewOrdersProvider, useNewOrders } from "./new-orders-context";
 
@@ -12,8 +14,6 @@ const adminFontStyle = {
   "--brand-font-family": "var(--font-open-sans), system-ui, sans-serif",
   fontFamily: "var(--font-open-sans), system-ui, sans-serif",
 } as CSSProperties;
-
-const PAYMENT_PATH = "/admin/payment";
 
 const links = [
   { href: "/admin/orders", label: "Live orders" },
@@ -61,6 +61,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const { newOrderCount } = useNewOrders();
   const prevPathRef = useRef(pathname);
   const [lowStockCount, setLowStockCount] = useState(0);
+  const pathIsSensitive = isSensitiveAdminPath(pathname);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,12 +83,15 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     };
   }, [pathname]);
 
-  // Re-lock the payment QR section whenever the admin leaves it.
+  // Re-lock when leaving a sensitive section for an open one (orders/menu/etc.).
   useEffect(() => {
     const prev = prevPathRef.current;
     prevPathRef.current = pathname;
 
-    if (prev === PAYMENT_PATH && pathname !== PAYMENT_PATH && unlocked) {
+    const wasSensitive = isSensitiveAdminPath(prev);
+    const nowSensitive = isSensitiveAdminPath(pathname);
+
+    if (wasSensitive && !nowSensitive && unlocked) {
       setUnlocked(false);
       fetch("/api/admin/payment-qr/unlock", { method: "DELETE" }).catch(() => {});
     }
@@ -120,9 +124,9 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         <nav className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-4 pb-3 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {links.map((link) => {
             const active = pathname === link.href;
-            const isPayment = link.href === PAYMENT_PATH;
             const isLiveOrders = link.href === "/admin/orders";
             const isInventory = link.href === "/admin/inventory";
+            const linkSensitive = isSensitiveAdminPath(link.href);
             return (
               <Link
                 key={link.href}
@@ -131,7 +135,9 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                   active ? "nav-active" : "nav-inactive"
                 }`}
               >
-                {isPayment && <LockIcon open={unlocked} />}
+                {linkSensitive && (
+                  <LockIcon open={unlocked && pathIsSensitive} />
+                )}
                 {link.label}
                 {isLiveOrders && newOrderCount > 0 && (
                   <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
@@ -152,7 +158,11 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         </nav>
       </header>
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 [padding-bottom:calc(1.5rem+env(safe-area-inset-bottom))]">
-        {children}
+        {pathIsSensitive ? (
+          <SensitiveAdminGate title="Locked section">{children}</SensitiveAdminGate>
+        ) : (
+          children
+        )}
       </main>
       <footer className="mx-auto w-full max-w-5xl shrink-0 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2">
         <DeveloperCredit />

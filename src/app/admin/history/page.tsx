@@ -118,9 +118,18 @@ export default function HistoryPage() {
 
   useEffect(() => {
     loadHistory();
-    fetch("/api/branding")
+    fetch(`/api/branding?_=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
-      .then((data: CafeBranding) => setBranding(data))
+      .then((data: CafeBranding) =>
+        setBranding({
+          ...getDefaultBranding(),
+          ...data,
+          gstEnabled: Boolean(data.gstEnabled),
+          gstin: data.gstin ?? null,
+          cgstPercent: Number(data.cgstPercent) || 0,
+          sgstPercent: Number(data.sgstPercent) || 0,
+        })
+      )
       .catch(() => {});
   }, []);
 

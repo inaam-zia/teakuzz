@@ -119,9 +119,13 @@ export default function ThermalReceipt({
 
       <hr className="thermal-receipt__rule" />
 
-      <div className="thermal-receipt__subtotal">
+      <div className="thermal-receipt__qty-line">
         <span>Total Qty: {totalQty}</span>
-        <span>Sub Total {formatReceiptAmount(bill.subTotal)}</span>
+      </div>
+
+      <div className="thermal-receipt__subtotal">
+        <span>Sub Total</span>
+        <span>{formatReceiptAmount(bill.subTotal)}</span>
       </div>
 
       {bill.applyGst ? (
@@ -144,8 +148,6 @@ export default function ThermalReceipt({
           ) : null}
         </>
       ) : null}
-
-      <hr className="thermal-receipt__rule thermal-receipt__rule--thick" />
 
       <div className="thermal-receipt__grand-total">
         <span>Bill Total</span>

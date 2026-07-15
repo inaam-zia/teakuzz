@@ -351,7 +351,7 @@
   }
 
   .thermal-receipt__gst-line {
-    @apply mt-1 flex justify-between gap-2 text-[11px] font-semibold;
+    @apply mt-0.5 flex items-center justify-between gap-2 text-[11px];
   }
 
   .thermal-receipt__rule {
@@ -405,12 +405,16 @@
     width: 2.5rem;
   }
 
+  .thermal-receipt__qty-line {
+    @apply mb-1 text-[10px];
+  }
+
   .thermal-receipt__subtotal {
-    @apply flex items-center justify-between text-[10px] font-semibold;
+    @apply flex items-center justify-between gap-2 text-[11px] font-semibold;
   }
 
   .thermal-receipt__grand-total {
-    @apply flex items-center justify-between text-xs font-bold;
+    @apply mt-1 flex items-center justify-between gap-2 text-xs font-bold;
   }
 
   .thermal-receipt__thanks {
