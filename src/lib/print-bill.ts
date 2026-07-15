@@ -1,10 +1,17 @@
-/** Open a print window for a thermal receipt DOM node. */
+/**
+ * Open a print window for a thermal receipt, keep it open, and show the
+ * system print dialog (Windows / macOS print preview).
+ */
 export function printThermalBill(receiptEl: HTMLElement | null, title = "Bill") {
   if (!receiptEl || typeof window === "undefined") return;
 
-  const win = window.open("", "_blank", "noopener,noreferrer,width=420,height=720");
+  // Must open during the click (no noopener) so the OS print dialog can attach
+  // to a real window that stays open.
+  const win = window.open("", "_blank", "width=480,height=800");
   if (!win) {
-    window.alert("Pop-up blocked. Allow pop-ups to print the bill.");
+    window.alert(
+      "Could not open the print window. Allow pop-ups for this site, then try Print bill again."
+    );
     return;
   }
 
@@ -12,6 +19,7 @@ export function printThermalBill(receiptEl: HTMLElement | null, title = "Bill") 
   // Interactive pay UI is useless on paper
   clone.querySelectorAll(".thermal-receipt__pay").forEach((el) => el.remove());
 
+  win.document.open();
   win.document.write(`<!DOCTYPE html>
 <html>
 <head>
@@ -26,6 +34,12 @@ export function printThermalBill(receiptEl: HTMLElement | null, title = "Bill") 
       color: #000;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
+    }
+    .no-print-hint {
+      text-align: center;
+      font: 13px system-ui, -apple-system, Segoe UI, sans-serif;
+      color: #525252;
+      margin: 0 0 12px;
     }
     .thermal-receipt {
       margin: 0 auto;
@@ -128,40 +142,60 @@ export function printThermalBill(receiptEl: HTMLElement | null, title = "Bill") 
       font-size: 11px;
       font-weight: 600;
     }
-    .no-print-hint {
-      text-align: center;
-      font: 12px system-ui, sans-serif;
-      color: #737373;
-      margin-bottom: 12px;
-    }
     @media print {
       body { padding: 0; }
-      .no-print-hint { display: none; }
+      .no-print-hint { display: none !important; }
       .thermal-receipt { border: none; max-width: none; box-shadow: none; }
     }
   </style>
 </head>
 <body>
-  <p class="no-print-hint">Print dialog opening…</p>
+  <p class="no-print-hint">Use the print dialog to print or save as PDF. You can close this window when finished.</p>
   ${clone.outerHTML}
-  <script>
-    window.onload = function () {
-      var imgs = Array.prototype.slice.call(document.images || []);
-      if (!imgs.length) { window.focus(); window.print(); return; }
-      var left = imgs.length;
-      var done = function () {
-        left -= 1;
-        if (left <= 0) { window.focus(); window.print(); }
-      };
-      imgs.forEach(function (img) {
-        if (img.complete) done();
-        else { img.onload = done; img.onerror = done; }
-      });
-    };
-  </script>
 </body>
 </html>`);
   win.document.close();
+
+  const triggerPrint = () => {
+    try {
+      win.focus();
+      // Opens the OS print UI (Windows / macOS). Window stays open afterward.
+      win.print();
+    } catch {
+      // Window still stays open so the user can print manually (Cmd/Ctrl+P)
+    }
+  };
+
+  const imgs = Array.from(win.document.images || []);
+  if (!imgs.length) {
+    // Let the new window paint, then show the system print dialog
+    win.setTimeout(triggerPrint, 250);
+    return;
+  }
+
+  let left = imgs.length;
+  let printed = false;
+  const done = () => {
+    left -= 1;
+    if (left <= 0 && !printed) {
+      printed = true;
+      win.setTimeout(triggerPrint, 250);
+    }
+  };
+  imgs.forEach((img) => {
+    if (img.complete) done();
+    else {
+      img.onload = done;
+      img.onerror = done;
+    }
+  });
+  // Safety: still open print dialog if an image stalls
+  win.setTimeout(() => {
+    if (!printed) {
+      printed = true;
+      triggerPrint();
+    }
+  }, 2500);
 }
 
 function escapeHtml(text: string) {
