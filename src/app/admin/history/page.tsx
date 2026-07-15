@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ThermalReceipt from "@/components/thermal-receipt";
 import TableHeading from "@/components/table-heading";
-import { downloadOrderHistoryExcel } from "@/lib/export-history-excel";
+import {
+  DEFAULT_ORDER_EXPORT_COLUMNS,
+  ORDER_EXPORT_COLUMNS,
+  downloadOrderHistoryExcel,
+  listHistoryCustomers,
+  type OrderExportColumnKey,
+} from "@/lib/export-history-excel";
 import { formatDate, formatPrice } from "@/lib/format";
 import { fetchJsonArray } from "@/lib/parse-api";
 import { printThermalBill } from "@/lib/print-bill";
@@ -20,6 +26,17 @@ export default function HistoryPage() {
   const [to, setTo] = useState("");
   const [table, setTable] = useState("");
   const [expandedBillId, setExpandedBillId] = useState<string | null>(null);
+  const [showExportOptions, setShowExportOptions] = useState(false);
+  const [exportColumns, setExportColumns] = useState<OrderExportColumnKey[]>([
+    ...DEFAULT_ORDER_EXPORT_COLUMNS,
+  ]);
+  const [selectedCustomerKeys, setSelectedCustomerKeys] = useState<string[]>([]);
+
+  const customers = useMemo(() => listHistoryCustomers(orders), [orders]);
+
+  useEffect(() => {
+    setSelectedCustomerKeys(customers.map((c) => c.key));
+  }, [customers]);
 
   async function loadHistory(overrides?: { from?: string; to?: string; table?: string }) {
     setLoading(true);
@@ -44,13 +61,49 @@ export default function HistoryPage() {
     setLoading(false);
   }
 
+  function toggleColumn(key: OrderExportColumnKey) {
+    setExportColumns((prev) => {
+      if (prev.includes(key)) {
+        if (prev.length === 1) return prev;
+        return prev.filter((c) => c !== key);
+      }
+      return ORDER_EXPORT_COLUMNS.map((c) => c.key).filter(
+        (c) => c === key || prev.includes(c)
+      );
+    });
+  }
+
+  function toggleCustomer(key: string) {
+    setSelectedCustomerKeys((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
+  }
+
   function downloadExcel() {
     if (!orders.length) return;
+    if (!exportColumns.length) {
+      setError("Select at least one column to export.");
+      return;
+    }
+    if (!selectedCustomerKeys.length) {
+      setError("Select at least one customer to export.");
+      return;
+    }
+
     const parts = ["order-history"];
     if (from) parts.push(`from-${from}`);
     if (to) parts.push(`to-${to}`);
     if (table) parts.push(`table-${table}`);
-    downloadOrderHistoryExcel(orders, `${parts.join("-")}.xlsx`);
+    if (selectedCustomerKeys.length === 1) parts.push("1-customer");
+    else if (selectedCustomerKeys.length < customers.length) {
+      parts.push(`${selectedCustomerKeys.length}-customers`);
+    }
+
+    downloadOrderHistoryExcel(orders, {
+      columns: exportColumns,
+      customerKeys: selectedCustomerKeys,
+      filename: `${parts.join("-")}.xlsx`,
+    });
   }
 
   function printBill(order: OrderWithItems) {
@@ -75,7 +128,9 @@ export default function HistoryPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-cafe-900">Order history</h2>
-        <p className="text-cafe-600">Find past orders by date or table — print any bill</p>
+        <p className="text-cafe-600">
+          Find past orders, print bills, or download Excel by column and customer
+        </p>
       </div>
 
       <div className="card space-y-4">
@@ -145,18 +200,137 @@ export default function HistoryPage() {
           </button>
           <button
             type="button"
-            onClick={downloadExcel}
+            onClick={() => setShowExportOptions((v) => !v)}
             className="btn-secondary"
             disabled={loading || orders.length === 0}
+          >
+            {showExportOptions ? "Hide Excel options" : "Excel options"}
+          </button>
+          <button
+            type="button"
+            onClick={downloadExcel}
+            className="btn-secondary"
+            disabled={
+              loading ||
+              orders.length === 0 ||
+              exportColumns.length === 0 ||
+              selectedCustomerKeys.length === 0
+            }
             title={
               orders.length === 0
                 ? "Search for orders first"
-                : `Download ${orders.length} orders as Excel`
+                : `Download selected columns for ${selectedCustomerKeys.length} customer(s)`
             }
           >
             Download Excel
           </button>
         </div>
+
+        {showExportOptions && orders.length > 0 && (
+          <div className="space-y-4 rounded-xl border border-cafe-100 bg-cafe-50/60 p-4">
+            <div>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-cafe-500">
+                  Columns
+                </h3>
+                <div className="flex gap-2 text-xs">
+                  <button
+                    type="button"
+                    className="text-cafe-700 underline underline-offset-2"
+                    onClick={() =>
+                      setExportColumns([...DEFAULT_ORDER_EXPORT_COLUMNS])
+                    }
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    className="text-cafe-700 underline underline-offset-2"
+                    onClick={() => setExportColumns(["Date", "Customer", "Total"])}
+                  >
+                    Minimal
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {ORDER_EXPORT_COLUMNS.map((col) => {
+                  const checked = exportColumns.includes(col.key);
+                  return (
+                    <label
+                      key={col.key}
+                      className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${
+                        checked
+                          ? "border-cafe-400 bg-white text-cafe-900"
+                          : "border-cafe-200 bg-transparent text-cafe-500"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleColumn(col.key)}
+                        className="rounded border-cafe-300"
+                      />
+                      {col.label}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-cafe-500">
+                  Customers ({selectedCustomerKeys.length}/{customers.length})
+                </h3>
+                <div className="flex gap-2 text-xs">
+                  <button
+                    type="button"
+                    className="text-cafe-700 underline underline-offset-2"
+                    onClick={() =>
+                      setSelectedCustomerKeys(customers.map((c) => c.key))
+                    }
+                  >
+                    Select all
+                  </button>
+                  <button
+                    type="button"
+                    className="text-cafe-700 underline underline-offset-2"
+                    onClick={() => setSelectedCustomerKeys([])}
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+              <ul className="max-h-56 space-y-1 overflow-y-auto rounded-xl border border-cafe-100 bg-white p-2">
+                {customers.map((customer) => {
+                  const checked = selectedCustomerKeys.includes(customer.key);
+                  return (
+                    <li key={customer.key}>
+                      <label className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-cafe-50">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleCustomer(customer.key)}
+                          className="rounded border-cafe-300"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium text-cafe-900">
+                            {customer.label}
+                          </span>
+                          <span className="text-xs text-cafe-500">
+                            {customer.orderCount} order
+                            {customer.orderCount === 1 ? "" : "s"} ·{" "}
+                            {formatPrice(customer.total)}
+                          </span>
+                        </span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -177,6 +351,9 @@ export default function HistoryPage() {
               type="button"
               onClick={downloadExcel}
               className="btn-secondary text-sm"
+              disabled={
+                exportColumns.length === 0 || selectedCustomerKeys.length === 0
+              }
             >
               Download Excel
             </button>

@@ -30,6 +30,8 @@ export async function PATCH(request: Request) {
       logo_url?: string | null;
       tagline?: string;
       theme?: CafeTheme;
+      gst_enabled?: boolean;
+      gstin?: string | null;
       updated_at: string;
     } = { updated_at: new Date().toISOString() };
 
@@ -51,6 +53,18 @@ export async function PATCH(request: Request) {
       updates.theme = nextTheme;
     }
 
+    if (typeof body.gstEnabled === "boolean") {
+      updates.gst_enabled = body.gstEnabled;
+    }
+
+    if (body.gstin === null || typeof body.gstin === "string") {
+      const gstin = String(body.gstin || "")
+        .trim()
+        .toUpperCase()
+        .replace(/\s+/g, "");
+      updates.gstin = gstin || null;
+    }
+
     const supabase = createServerClient();
     const { data, error } = await supabase
       .from("cafe_settings")
@@ -59,6 +73,15 @@ export async function PATCH(request: Request) {
       .single();
 
     if (error) {
+      if (error.message.includes("gst_")) {
+        return NextResponse.json(
+          {
+            error:
+              "Run supabase/add-gst.sql in Supabase SQL editor to enable GST settings.",
+          },
+          { status: 503 }
+        );
+      }
       if (error.message.includes("cafe_settings")) {
         return NextResponse.json(
           {

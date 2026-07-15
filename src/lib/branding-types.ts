@@ -24,6 +24,10 @@ export type CafeBranding = {
   logoUrl: string | null;
   tagline: string;
   theme: CafeTheme;
+  /** When true, bills show GSTIN */
+  gstEnabled: boolean;
+  /** GST Identification Number */
+  gstin: string | null;
 };
 
 export const DEFAULT_THEME: CafeTheme = {
@@ -98,6 +102,8 @@ export function getDefaultBranding(): CafeBranding {
     logoUrl: null,
     tagline: "Scan the QR code on your table to browse the menu and place an order.",
     theme: { ...DEFAULT_THEME },
+    gstEnabled: false,
+    gstin: null,
   };
 }
 

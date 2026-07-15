@@ -55,6 +55,9 @@ export default function ThermalReceipt({
             {line}
           </p>
         ))}
+        {branding.gstEnabled && branding.gstin ? (
+          <p className="thermal-receipt__gst">GSTIN: {branding.gstin}</p>
+        ) : null}
       </header>
 
       <hr className="thermal-receipt__rule" />

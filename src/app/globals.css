@@ -346,6 +346,10 @@
     @apply text-[10px] leading-snug text-black;
   }
 
+  .thermal-receipt__gst {
+    @apply mt-1 text-[10px] font-semibold tracking-wide text-black;
+  }
+
   .thermal-receipt__rule {
     @apply my-2 border-0 border-t border-dashed border-neutral-400;
   }

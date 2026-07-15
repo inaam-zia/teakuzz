@@ -32,6 +32,9 @@ export default function SettingsPage() {
   const [paymentForm, setPaymentForm] = useState(emptyPaymentForm);
   const [savingAdmin, setSavingAdmin] = useState(false);
   const [savingPayment, setSavingPayment] = useState(false);
+  const [gstEnabled, setGstEnabled] = useState(false);
+  const [gstin, setGstin] = useState("");
+  const [savingGst, setSavingGst] = useState(false);
 
   async function loadStatus() {
     const res = await fetch("/api/admin/passwords");
@@ -43,8 +46,16 @@ export default function SettingsPage() {
     setStatus(data);
   }
 
+  async function loadGst() {
+    const res = await fetch("/api/branding");
+    if (!res.ok) return;
+    const data = await res.json();
+    setGstEnabled(Boolean(data.gstEnabled));
+    setGstin(data.gstin || "");
+  }
+
   useEffect(() => {
-    loadStatus().finally(() => setLoading(false));
+    Promise.all([loadStatus(), loadGst()]).finally(() => setLoading(false));
   }, []);
 
   async function changePassword(
@@ -105,6 +116,48 @@ export default function SettingsPage() {
     }
   }
 
+  async function onSaveGst(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+
+    const cleaned = gstin.trim().toUpperCase().replace(/\s+/g, "");
+    if (gstEnabled && !cleaned) {
+      setError("Enter your GSTIN to enable GST on bills.");
+      return;
+    }
+    if (gstEnabled && cleaned.length !== 15) {
+      setError("GSTIN must be 15 characters (e.g. 22AAAAA0000A1Z5).");
+      return;
+    }
+
+    setSavingGst(true);
+    try {
+      const res = await fetch("/api/branding", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          gstEnabled,
+          gstin: cleaned || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Could not save GST settings");
+        return;
+      }
+      setGstEnabled(Boolean(data.gstEnabled));
+      setGstin(data.gstin || "");
+      setSuccess(
+        data.gstEnabled
+          ? "GST enabled — GSTIN will show on customer and admin bills."
+          : "GST disabled on bills."
+      );
+    } finally {
+      setSavingGst(false);
+    }
+  }
+
   if (loading) {
     return <p className="text-brand-muted">Loading settings…</p>;
   }
@@ -114,7 +167,7 @@ export default function SettingsPage() {
       <div>
         <h2 className="text-2xl font-bold text-brand-heading">Settings</h2>
         <p className="text-brand-muted">
-          Change your admin login password and the Payment QR unlock password.
+          Passwords, GST on bills, and security options for the admin panel.
         </p>
       </div>
 
@@ -128,6 +181,50 @@ export default function SettingsPage() {
           {success}
         </div>
       )}
+
+      <form onSubmit={onSaveGst} className="card space-y-4">
+        <div>
+          <h3 className="font-bold text-brand-heading">GST</h3>
+          <p className="mt-1 text-sm text-brand-muted">
+            When enabled, your GSTIN is printed on customer bills and admin bill
+            previews / print.
+          </p>
+        </div>
+
+        <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-brand bg-brand-surface px-4 py-3">
+          <input
+            type="checkbox"
+            checked={gstEnabled}
+            onChange={(e) => setGstEnabled(e.target.checked)}
+            className="h-4 w-4 rounded border-brand"
+          />
+          <span className="text-sm font-medium text-brand-heading">
+            Enable GST on bills
+          </span>
+        </label>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-brand-muted">
+            GSTIN number
+          </label>
+          <input
+            type="text"
+            value={gstin}
+            onChange={(e) => setGstin(e.target.value.toUpperCase())}
+            placeholder="22AAAAA0000A1Z5"
+            maxLength={15}
+            className="input-field font-mono tracking-wide"
+            autoComplete="off"
+          />
+          <p className="mt-1 text-xs text-brand-muted">
+            15-character GST Identification Number. Shown only when GST is enabled.
+          </p>
+        </div>
+
+        <button type="submit" className="btn-primary" disabled={savingGst}>
+          {savingGst ? "Saving…" : "Save GST settings"}
+        </button>
+      </form>
 
       <form onSubmit={onSaveAdmin} className="card space-y-4">
         <div>
