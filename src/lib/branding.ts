@@ -14,6 +14,7 @@ type SettingsRow = {
   theme: Partial<CafeTheme> | null;
   gst_enabled?: boolean | null;
   gstin?: string | null;
+  gst_percent?: number | string | null;
 };
 
 let cache: { data: CafeBranding; at: number } | null = null;
@@ -29,6 +30,26 @@ function normalizeGstin(raw?: string | null): string | null {
     .toUpperCase()
     .replace(/\s+/g, "");
   return value || null;
+}
+
+function normalizeGstPercent(raw?: number | string | null): number {
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  // Cap at 100% for sanity
+  return Math.min(100, Math.round(n * 100) / 100);
+}
+
+function rowToBranding(row: SettingsRow, defaults: CafeBranding): CafeBranding {
+  const gstin = normalizeGstin(row.gstin);
+  return {
+    appName: row.app_name?.trim() || defaults.appName,
+    logoUrl: row.logo_url || null,
+    tagline: row.tagline?.trim() || defaults.tagline,
+    theme: mergeTheme(row.theme),
+    gstEnabled: Boolean(row.gst_enabled) && Boolean(gstin),
+    gstin,
+    gstPercent: normalizeGstPercent(row.gst_percent),
+  };
 }
 
 export async function getBranding(): Promise<CafeBranding> {
@@ -48,31 +69,43 @@ export async function getBranding(): Promise<CafeBranding> {
     const supabase = createServerClient();
     const { data, error } = await supabase
       .from("cafe_settings")
-      .select("app_name, logo_url, tagline, theme, gst_enabled, gstin")
+      .select("app_name, logo_url, tagline, theme, gst_enabled, gstin, gst_percent")
       .eq("id", 1)
       .maybeSingle();
 
-    // Older DBs without GST columns
-    if (error?.message?.includes("gst_")) {
+    if (error?.message?.includes("gst_percent")) {
       const fallback = await supabase
+        .from("cafe_settings")
+        .select("app_name, logo_url, tagline, theme, gst_enabled, gstin")
+        .eq("id", 1)
+        .maybeSingle();
+
+      if (fallback.error?.message?.includes("gst_")) {
+        const plain = await supabase
+          .from("cafe_settings")
+          .select("app_name, logo_url, tagline, theme")
+          .eq("id", 1)
+          .maybeSingle();
+        if (plain.error || !plain.data) return defaults;
+        const branding = rowToBranding(plain.data as SettingsRow, defaults);
+        cache = { data: branding, at: Date.now() };
+        return branding;
+      }
+
+      if (fallback.error || !fallback.data) return defaults;
+      const branding = rowToBranding(fallback.data as SettingsRow, defaults);
+      cache = { data: branding, at: Date.now() };
+      return branding;
+    }
+
+    if (error?.message?.includes("gst_")) {
+      const plain = await supabase
         .from("cafe_settings")
         .select("app_name, logo_url, tagline, theme")
         .eq("id", 1)
         .maybeSingle();
-
-      if (fallback.error || !fallback.data) {
-        return defaults;
-      }
-
-      const row = fallback.data as SettingsRow;
-      const branding: CafeBranding = {
-        appName: row.app_name?.trim() || defaults.appName,
-        logoUrl: row.logo_url || null,
-        tagline: row.tagline?.trim() || defaults.tagline,
-        theme: mergeTheme(row.theme),
-        gstEnabled: false,
-        gstin: null,
-      };
+      if (plain.error || !plain.data) return defaults;
+      const branding = rowToBranding(plain.data as SettingsRow, defaults);
       cache = { data: branding, at: Date.now() };
       return branding;
     }
@@ -81,17 +114,7 @@ export async function getBranding(): Promise<CafeBranding> {
       return defaults;
     }
 
-    const row = data as SettingsRow;
-    const gstin = normalizeGstin(row.gstin);
-    const branding: CafeBranding = {
-      appName: row.app_name?.trim() || defaults.appName,
-      logoUrl: row.logo_url || null,
-      tagline: row.tagline?.trim() || defaults.tagline,
-      theme: mergeTheme(row.theme),
-      gstEnabled: Boolean(row.gst_enabled) && Boolean(gstin),
-      gstin,
-    };
-
+    const branding = rowToBranding(data as SettingsRow, defaults);
     cache = { data: branding, at: Date.now() };
     return branding;
   } catch {

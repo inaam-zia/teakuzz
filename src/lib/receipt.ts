@@ -31,3 +31,36 @@ export function formatReceiptAmount(amount: number): string {
 export function formatReceiptGrandTotal(amount: number): string {
   return `₹${amount.toFixed(2)}`;
 }
+
+export type BillTotals = {
+  subTotal: number;
+  gstPercent: number;
+  gstAmount: number;
+  grandTotal: number;
+  applyGst: boolean;
+};
+
+/** Calculate bill totals with optional GST %. */
+export function calculateBillTotals(
+  subTotal: number,
+  options?: { gstEnabled?: boolean; gstPercent?: number | null }
+): BillTotals {
+  const percent = Number(options?.gstPercent);
+  const applyGst =
+    Boolean(options?.gstEnabled) && Number.isFinite(percent) && percent > 0;
+  const gstPercent = applyGst ? percent : 0;
+  const gstAmount = applyGst
+    ? Math.round(subTotal * gstPercent) / 100
+    : 0;
+  // Round GST to 2 decimals via cents
+  const gstRounded = Math.round(gstAmount * 100) / 100;
+  const grandTotal = Math.round((subTotal + gstRounded) * 100) / 100;
+
+  return {
+    subTotal: Math.round(subTotal * 100) / 100,
+    gstPercent,
+    gstAmount: gstRounded,
+    grandTotal,
+    applyGst,
+  };
+}

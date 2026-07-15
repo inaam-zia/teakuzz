@@ -1,6 +1,7 @@
 import type { CafeBranding } from "@/lib/branding-types";
 import { getReceiptConfig } from "@/lib/receipt-config";
 import {
+  calculateBillTotals,
   formatReceiptAmount,
   formatReceiptDate,
   formatReceiptGrandTotal,
@@ -37,6 +38,10 @@ export default function ThermalReceipt({
     (sum, item) => sum + item.item_price * item.quantity,
     0
   );
+  const bill = calculateBillTotals(subTotal, {
+    gstEnabled: branding.gstEnabled,
+    gstPercent: branding.gstPercent,
+  });
 
   return (
     <article className="thermal-receipt" aria-label="Bill receipt">
@@ -114,14 +119,23 @@ export default function ThermalReceipt({
 
       <div className="thermal-receipt__subtotal">
         <span>Total Qty: {totalQty}</span>
-        <span>Sub Total {formatReceiptAmount(subTotal)}</span>
+        <span>Sub Total {formatReceiptAmount(bill.subTotal)}</span>
       </div>
+
+      {bill.applyGst ? (
+        <div className="thermal-receipt__gst-line">
+          <span>
+            GST @ {bill.gstPercent % 1 === 0 ? bill.gstPercent : bill.gstPercent.toFixed(2)}%
+          </span>
+          <span>{formatReceiptAmount(bill.gstAmount)}</span>
+        </div>
+      ) : null}
 
       <hr className="thermal-receipt__rule thermal-receipt__rule--thick" />
 
       <div className="thermal-receipt__grand-total">
         <span>Grand Total</span>
-        <span>{formatReceiptGrandTotal(subTotal)}</span>
+        <span>{formatReceiptGrandTotal(bill.grandTotal)}</span>
       </div>
 
       {paymentUpiId ? (
@@ -131,7 +145,7 @@ export default function ThermalReceipt({
             upi={{
               upiId: paymentUpiId,
               payeeName: paymentPayeeName || receipt.cafeName,
-              amount: subTotal,
+              amount: bill.grandTotal,
               note: `Bill ${billNumber}`,
             }}
             fallbackQrUrl={paymentQrUrl}
@@ -153,7 +167,7 @@ export default function ThermalReceipt({
               className="thermal-receipt__pay-qr"
             />
             <p className="thermal-receipt__pay-amount">
-              Pay {formatReceiptGrandTotal(subTotal)}
+              Pay {formatReceiptGrandTotal(bill.grandTotal)}
             </p>
           </div>
         </>

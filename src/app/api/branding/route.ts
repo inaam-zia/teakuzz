@@ -32,6 +32,7 @@ export async function PATCH(request: Request) {
       theme?: CafeTheme;
       gst_enabled?: boolean;
       gstin?: string | null;
+      gst_percent?: number;
       updated_at: string;
     } = { updated_at: new Date().toISOString() };
 
@@ -65,19 +66,30 @@ export async function PATCH(request: Request) {
       updates.gstin = gstin || null;
     }
 
+    if (body.gstPercent !== undefined && body.gstPercent !== null) {
+      const percent = Number(body.gstPercent);
+      if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
+        return NextResponse.json(
+          { error: "GST % must be a number between 0 and 100" },
+          { status: 400 }
+        );
+      }
+      updates.gst_percent = Math.round(percent * 100) / 100;
+    }
+
     const supabase = createServerClient();
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("cafe_settings")
       .upsert({ id: 1, ...updates })
       .select()
       .single();
 
     if (error) {
-      if (error.message.includes("gst_")) {
+      if (error.message.includes("gst_percent") || error.message.includes("gst_")) {
         return NextResponse.json(
           {
             error:
-              "Run supabase/add-gst.sql in Supabase SQL editor to enable GST settings.",
+              "Run supabase/add-gst.sql (and add-gst-percent.sql if needed) in Supabase SQL editor to enable GST settings.",
           },
           { status: 503 }
         );

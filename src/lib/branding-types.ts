@@ -24,10 +24,12 @@ export type CafeBranding = {
   logoUrl: string | null;
   tagline: string;
   theme: CafeTheme;
-  /** When true, bills show GSTIN */
+  /** When true, show GSTIN on bills and apply GST % when set */
   gstEnabled: boolean;
   /** GST Identification Number */
   gstin: string | null;
+  /** GST percentage added on bill (e.g. 5 for 5%) */
+  gstPercent: number;
 };
 
 export const DEFAULT_THEME: CafeTheme = {
@@ -104,6 +106,7 @@ export function getDefaultBranding(): CafeBranding {
     theme: { ...DEFAULT_THEME },
     gstEnabled: false,
     gstin: null,
+    gstPercent: 0,
   };
 }
 
