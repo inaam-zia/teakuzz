@@ -34,32 +34,82 @@ export function formatReceiptGrandTotal(amount: number): string {
 
 export type BillTotals = {
   subTotal: number;
-  gstPercent: number;
+  cgstPercent: number;
+  sgstPercent: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  /** Combined tax amount */
   gstAmount: number;
   grandTotal: number;
   applyGst: boolean;
 };
 
-/** Calculate bill totals with optional GST %. */
+function roundMoney(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+function taxOn(subTotal: number, percent: number): number {
+  if (!Number.isFinite(percent) || percent <= 0) return 0;
+  return roundMoney((subTotal * percent) / 100);
+}
+
+function formatPercentLabel(percent: number): string {
+  return percent % 1 === 0 ? String(percent) : percent.toFixed(2);
+}
+
+/** e.g. "CGST 2.5% on 198.00" */
+export function formatTaxLineLabel(
+  kind: "CGST" | "SGST",
+  percent: number,
+  subTotal: number
+): string {
+  return `${kind} ${formatPercentLabel(percent)}% on ${subTotal.toFixed(2)}`;
+}
+
+/** Calculate bill totals with optional CGST + SGST %. */
 export function calculateBillTotals(
   subTotal: number,
-  options?: { gstEnabled?: boolean; gstPercent?: number | null }
+  options?: {
+    gstEnabled?: boolean;
+    cgstPercent?: number | null;
+    sgstPercent?: number | null;
+    /** @deprecated use cgstPercent + sgstPercent; split evenly if only this is set */
+    gstPercent?: number | null;
+  }
 ): BillTotals {
-  const percent = Number(options?.gstPercent);
+  const base = roundMoney(subTotal);
+  let cgstPercent = Number(options?.cgstPercent);
+  let sgstPercent = Number(options?.sgstPercent);
+
+  if (
+    (!Number.isFinite(cgstPercent) || cgstPercent <= 0) &&
+    (!Number.isFinite(sgstPercent) || sgstPercent <= 0)
+  ) {
+    const legacy = Number(options?.gstPercent);
+    if (Number.isFinite(legacy) && legacy > 0) {
+      cgstPercent = roundMoney(legacy / 2);
+      sgstPercent = roundMoney(legacy / 2);
+    }
+  }
+
+  if (!Number.isFinite(cgstPercent) || cgstPercent < 0) cgstPercent = 0;
+  if (!Number.isFinite(sgstPercent) || sgstPercent < 0) sgstPercent = 0;
+
   const applyGst =
-    Boolean(options?.gstEnabled) && Number.isFinite(percent) && percent > 0;
-  const gstPercent = applyGst ? percent : 0;
-  const gstAmount = applyGst
-    ? Math.round(subTotal * gstPercent) / 100
-    : 0;
-  // Round GST to 2 decimals via cents
-  const gstRounded = Math.round(gstAmount * 100) / 100;
-  const grandTotal = Math.round((subTotal + gstRounded) * 100) / 100;
+    Boolean(options?.gstEnabled) && (cgstPercent > 0 || sgstPercent > 0);
+
+  const cgstAmount = applyGst ? taxOn(base, cgstPercent) : 0;
+  const sgstAmount = applyGst ? taxOn(base, sgstPercent) : 0;
+  const gstAmount = roundMoney(cgstAmount + sgstAmount);
+  const grandTotal = roundMoney(base + gstAmount);
 
   return {
-    subTotal: Math.round(subTotal * 100) / 100,
-    gstPercent,
-    gstAmount: gstRounded,
+    subTotal: base,
+    cgstPercent: applyGst ? cgstPercent : 0,
+    sgstPercent: applyGst ? sgstPercent : 0,
+    cgstAmount,
+    sgstAmount,
+    gstAmount,
     grandTotal,
     applyGst,
   };

@@ -32,6 +32,8 @@ export async function PATCH(request: Request) {
       theme?: CafeTheme;
       gst_enabled?: boolean;
       gstin?: string | null;
+      cgst_percent?: number;
+      sgst_percent?: number;
       gst_percent?: number;
       updated_at: string;
     } = { updated_at: new Date().toISOString() };
@@ -66,15 +68,46 @@ export async function PATCH(request: Request) {
       updates.gstin = gstin || null;
     }
 
-    if (body.gstPercent !== undefined && body.gstPercent !== null) {
-      const percent = Number(body.gstPercent);
+    const parsePercent = (
+      value: unknown,
+      label: string
+    ): number | NextResponse => {
+      const percent = Number(value);
       if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
         return NextResponse.json(
-          { error: "GST % must be a number between 0 and 100" },
+          { error: `${label} must be a number between 0 and 100` },
           { status: 400 }
         );
       }
-      updates.gst_percent = Math.round(percent * 100) / 100;
+      return Math.round(percent * 100) / 100;
+    };
+
+    if (body.cgstPercent !== undefined && body.cgstPercent !== null) {
+      const parsed = parsePercent(body.cgstPercent, "CGST %");
+      if (parsed instanceof NextResponse) return parsed;
+      updates.cgst_percent = parsed;
+    }
+
+    if (body.sgstPercent !== undefined && body.sgstPercent !== null) {
+      const parsed = parsePercent(body.sgstPercent, "SGST %");
+      if (parsed instanceof NextResponse) return parsed;
+      updates.sgst_percent = parsed;
+    }
+
+    // Keep legacy gst_percent in sync = CGST + SGST for older rows/tools
+    if (
+      updates.cgst_percent !== undefined ||
+      updates.sgst_percent !== undefined
+    ) {
+      const c =
+        updates.cgst_percent !== undefined
+          ? updates.cgst_percent
+          : current.cgstPercent;
+      const s =
+        updates.sgst_percent !== undefined
+          ? updates.sgst_percent
+          : current.sgstPercent;
+      updates.gst_percent = Math.round((c + s) * 100) / 100;
     }
 
     const supabase = createServerClient();
@@ -85,11 +118,15 @@ export async function PATCH(request: Request) {
       .single();
 
     if (error) {
-      if (error.message.includes("gst_percent") || error.message.includes("gst_")) {
+      if (
+        error.message.includes("cgst_percent") ||
+        error.message.includes("sgst_percent") ||
+        error.message.includes("gst_")
+      ) {
         return NextResponse.json(
           {
             error:
-              "Run supabase/add-gst.sql (and add-gst-percent.sql if needed) in Supabase SQL editor to enable GST settings.",
+              "Run supabase/add-cgst-sgst.sql in Supabase SQL editor to enable CGST/SGST.",
           },
           { status: 503 }
         );

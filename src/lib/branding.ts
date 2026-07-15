@@ -15,6 +15,8 @@ type SettingsRow = {
   gst_enabled?: boolean | null;
   gstin?: string | null;
   gst_percent?: number | string | null;
+  cgst_percent?: number | string | null;
+  sgst_percent?: number | string | null;
 };
 
 let cache: { data: CafeBranding; at: number } | null = null;
@@ -32,15 +34,31 @@ function normalizeGstin(raw?: string | null): string | null {
   return value || null;
 }
 
-function normalizeGstPercent(raw?: number | string | null): number {
+function normalizePercent(raw?: number | string | null): number {
   const n = typeof raw === "number" ? raw : Number(raw);
   if (!Number.isFinite(n) || n < 0) return 0;
-  // Cap at 100% for sanity
   return Math.min(100, Math.round(n * 100) / 100);
+}
+
+function resolveTaxPercents(row: SettingsRow): {
+  cgstPercent: number;
+  sgstPercent: number;
+} {
+  let cgst = normalizePercent(row.cgst_percent);
+  let sgst = normalizePercent(row.sgst_percent);
+  if (cgst <= 0 && sgst <= 0) {
+    const legacy = normalizePercent(row.gst_percent);
+    if (legacy > 0) {
+      cgst = Math.round((legacy / 2) * 100) / 100;
+      sgst = Math.round((legacy / 2) * 100) / 100;
+    }
+  }
+  return { cgstPercent: cgst, sgstPercent: sgst };
 }
 
 function rowToBranding(row: SettingsRow, defaults: CafeBranding): CafeBranding {
   const gstin = normalizeGstin(row.gstin);
+  const { cgstPercent, sgstPercent } = resolveTaxPercents(row);
   return {
     appName: row.app_name?.trim() || defaults.appName,
     logoUrl: row.logo_url || null,
@@ -48,8 +66,49 @@ function rowToBranding(row: SettingsRow, defaults: CafeBranding): CafeBranding {
     theme: mergeTheme(row.theme),
     gstEnabled: Boolean(row.gst_enabled) && Boolean(gstin),
     gstin,
-    gstPercent: normalizeGstPercent(row.gst_percent),
+    cgstPercent,
+    sgstPercent,
   };
+}
+
+async function loadSettingsRow(): Promise<SettingsRow | null> {
+  const supabase = createServerClient();
+
+  const full = await supabase
+    .from("cafe_settings")
+    .select(
+      "app_name, logo_url, tagline, theme, gst_enabled, gstin, gst_percent, cgst_percent, sgst_percent"
+    )
+    .eq("id", 1)
+    .maybeSingle();
+
+  if (!full.error && full.data) return full.data as SettingsRow;
+
+  // Progressively older schemas
+  const withLegacyGst = await supabase
+    .from("cafe_settings")
+    .select("app_name, logo_url, tagline, theme, gst_enabled, gstin, gst_percent")
+    .eq("id", 1)
+    .maybeSingle();
+  if (!withLegacyGst.error && withLegacyGst.data) {
+    return withLegacyGst.data as SettingsRow;
+  }
+
+  const withGstin = await supabase
+    .from("cafe_settings")
+    .select("app_name, logo_url, tagline, theme, gst_enabled, gstin")
+    .eq("id", 1)
+    .maybeSingle();
+  if (!withGstin.error && withGstin.data) return withGstin.data as SettingsRow;
+
+  const plain = await supabase
+    .from("cafe_settings")
+    .select("app_name, logo_url, tagline, theme")
+    .eq("id", 1)
+    .maybeSingle();
+  if (!plain.error && plain.data) return plain.data as SettingsRow;
+
+  return null;
 }
 
 export async function getBranding(): Promise<CafeBranding> {
@@ -66,55 +125,9 @@ export async function getBranding(): Promise<CafeBranding> {
   }
 
   try {
-    const supabase = createServerClient();
-    const { data, error } = await supabase
-      .from("cafe_settings")
-      .select("app_name, logo_url, tagline, theme, gst_enabled, gstin, gst_percent")
-      .eq("id", 1)
-      .maybeSingle();
-
-    if (error?.message?.includes("gst_percent")) {
-      const fallback = await supabase
-        .from("cafe_settings")
-        .select("app_name, logo_url, tagline, theme, gst_enabled, gstin")
-        .eq("id", 1)
-        .maybeSingle();
-
-      if (fallback.error?.message?.includes("gst_")) {
-        const plain = await supabase
-          .from("cafe_settings")
-          .select("app_name, logo_url, tagline, theme")
-          .eq("id", 1)
-          .maybeSingle();
-        if (plain.error || !plain.data) return defaults;
-        const branding = rowToBranding(plain.data as SettingsRow, defaults);
-        cache = { data: branding, at: Date.now() };
-        return branding;
-      }
-
-      if (fallback.error || !fallback.data) return defaults;
-      const branding = rowToBranding(fallback.data as SettingsRow, defaults);
-      cache = { data: branding, at: Date.now() };
-      return branding;
-    }
-
-    if (error?.message?.includes("gst_")) {
-      const plain = await supabase
-        .from("cafe_settings")
-        .select("app_name, logo_url, tagline, theme")
-        .eq("id", 1)
-        .maybeSingle();
-      if (plain.error || !plain.data) return defaults;
-      const branding = rowToBranding(plain.data as SettingsRow, defaults);
-      cache = { data: branding, at: Date.now() };
-      return branding;
-    }
-
-    if (error || !data) {
-      return defaults;
-    }
-
-    const branding = rowToBranding(data as SettingsRow, defaults);
+    const row = await loadSettingsRow();
+    if (!row) return defaults;
+    const branding = rowToBranding(row, defaults);
     cache = { data: branding, at: Date.now() };
     return branding;
   } catch {

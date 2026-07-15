@@ -34,7 +34,8 @@ export default function SettingsPage() {
   const [savingPayment, setSavingPayment] = useState(false);
   const [gstEnabled, setGstEnabled] = useState(false);
   const [gstin, setGstin] = useState("");
-  const [gstPercent, setGstPercent] = useState("5");
+  const [cgstPercent, setCgstPercent] = useState("2.5");
+  const [sgstPercent, setSgstPercent] = useState("2.5");
   const [savingGst, setSavingGst] = useState(false);
 
   async function loadStatus() {
@@ -53,10 +54,15 @@ export default function SettingsPage() {
     const data = await res.json();
     setGstEnabled(Boolean(data.gstEnabled));
     setGstin(data.gstin || "");
-    setGstPercent(
-      data.gstPercent != null && Number(data.gstPercent) > 0
-        ? String(data.gstPercent)
-        : "5"
+    setCgstPercent(
+      data.cgstPercent != null && Number(data.cgstPercent) > 0
+        ? String(data.cgstPercent)
+        : "2.5"
+    );
+    setSgstPercent(
+      data.sgstPercent != null && Number(data.sgstPercent) > 0
+        ? String(data.sgstPercent)
+        : "2.5"
     );
   }
 
@@ -128,7 +134,8 @@ export default function SettingsPage() {
     setSuccess("");
 
     const cleaned = gstin.trim().toUpperCase().replace(/\s+/g, "");
-    const percent = Number(gstPercent);
+    const cgst = Number(cgstPercent);
+    const sgst = Number(sgstPercent);
     if (gstEnabled && !cleaned) {
       setError("Enter your GSTIN to enable GST on bills.");
       return;
@@ -137,8 +144,20 @@ export default function SettingsPage() {
       setError("GSTIN must be 15 characters (e.g. 22AAAAA0000A1Z5).");
       return;
     }
-    if (gstEnabled && (!Number.isFinite(percent) || percent <= 0 || percent > 100)) {
-      setError("Enter a GST % between 0.01 and 100 (e.g. 5 or 18).");
+    if (
+      gstEnabled &&
+      (!Number.isFinite(cgst) ||
+        cgst < 0 ||
+        cgst > 100 ||
+        !Number.isFinite(sgst) ||
+        sgst < 0 ||
+        sgst > 100)
+    ) {
+      setError("Enter CGST % and SGST % between 0 and 100 (e.g. 2.5 each).");
+      return;
+    }
+    if (gstEnabled && cgst <= 0 && sgst <= 0) {
+      setError("Set at least one of CGST % or SGST % greater than 0.");
       return;
     }
 
@@ -150,7 +169,8 @@ export default function SettingsPage() {
         body: JSON.stringify({
           gstEnabled,
           gstin: cleaned || null,
-          gstPercent: Number.isFinite(percent) ? percent : 0,
+          cgstPercent: Number.isFinite(cgst) ? cgst : 0,
+          sgstPercent: Number.isFinite(sgst) ? sgst : 0,
         }),
       });
       const data = await res.json();
@@ -160,12 +180,15 @@ export default function SettingsPage() {
       }
       setGstEnabled(Boolean(data.gstEnabled));
       setGstin(data.gstin || "");
-      setGstPercent(
-        data.gstPercent != null ? String(data.gstPercent) : gstPercent
+      setCgstPercent(
+        data.cgstPercent != null ? String(data.cgstPercent) : cgstPercent
+      );
+      setSgstPercent(
+        data.sgstPercent != null ? String(data.sgstPercent) : sgstPercent
       );
       setSuccess(
         data.gstEnabled
-          ? `GST enabled at ${data.gstPercent}% — bills will show GSTIN and add GST to the total.`
+          ? `GST enabled — CGST ${data.cgstPercent}% + SGST ${data.sgstPercent}% on bills.`
           : "GST disabled on bills."
       );
     } finally {
@@ -201,8 +224,8 @@ export default function SettingsPage() {
         <div>
           <h3 className="font-bold text-brand-heading">GST</h3>
           <p className="mt-1 text-sm text-brand-muted">
-            When enabled, bills show your GSTIN and add GST % on the subtotal
-            (customer + admin print).
+            When enabled, bills show GSTIN and add CGST + SGST on the subtotal
+            (same style as a tax invoice).
           </p>
         </div>
 
@@ -218,27 +241,28 @@ export default function SettingsPage() {
           </span>
         </label>
 
+        <div>
+          <label className="mb-1 block text-sm font-medium text-brand-muted">
+            GSTIN number
+          </label>
+          <input
+            type="text"
+            value={gstin}
+            onChange={(e) => setGstin(e.target.value.toUpperCase())}
+            placeholder="22AAAAA0000A1Z5"
+            maxLength={15}
+            className="input-field font-mono tracking-wide"
+            autoComplete="off"
+          />
+          <p className="mt-1 text-xs text-brand-muted">
+            15-character GST Identification Number.
+          </p>
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="mb-1 block text-sm font-medium text-brand-muted">
-              GSTIN number
-            </label>
-            <input
-              type="text"
-              value={gstin}
-              onChange={(e) => setGstin(e.target.value.toUpperCase())}
-              placeholder="22AAAAA0000A1Z5"
-              maxLength={15}
-              className="input-field font-mono tracking-wide"
-              autoComplete="off"
-            />
-            <p className="mt-1 text-xs text-brand-muted">
-              15-character GST Identification Number.
-            </p>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-brand-muted">
-              GST %
+              CGST %
             </label>
             <div className="relative">
               <input
@@ -246,20 +270,41 @@ export default function SettingsPage() {
                 min="0"
                 max="100"
                 step="0.01"
-                value={gstPercent}
-                onChange={(e) => setGstPercent(e.target.value)}
-                placeholder="5"
+                value={cgstPercent}
+                onChange={(e) => setCgstPercent(e.target.value)}
+                placeholder="2.5"
                 className="input-field pr-10"
               />
               <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-brand-muted">
                 %
               </span>
             </div>
-            <p className="mt-1 text-xs text-brand-muted">
-              Added on subtotal. Example: subtotal ₹200 + 5% = ₹210.
-            </p>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-brand-muted">
+              SGST %
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                value={sgstPercent}
+                onChange={(e) => setSgstPercent(e.target.value)}
+                placeholder="2.5"
+                className="input-field pr-10"
+              />
+              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-brand-muted">
+                %
+              </span>
+            </div>
           </div>
         </div>
+        <p className="text-xs text-brand-muted">
+          Example: subtotal ₹198 + CGST 2.5% (₹4.95) + SGST 2.5% (₹4.95) = Bill
+          Total ₹207.90
+        </p>
 
         <button type="submit" className="btn-primary" disabled={savingGst}>
           {savingGst ? "Saving…" : "Save GST settings"}

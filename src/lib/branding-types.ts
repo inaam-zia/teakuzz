@@ -28,8 +28,10 @@ export type CafeBranding = {
   gstEnabled: boolean;
   /** GST Identification Number */
   gstin: string | null;
-  /** GST percentage added on bill (e.g. 5 for 5%) */
-  gstPercent: number;
+  /** CGST percentage on subtotal (e.g. 2.5) */
+  cgstPercent: number;
+  /** SGST percentage on subtotal (e.g. 2.5) */
+  sgstPercent: number;
 };
 
 export const DEFAULT_THEME: CafeTheme = {
@@ -106,7 +108,8 @@ export function getDefaultBranding(): CafeBranding {
     theme: { ...DEFAULT_THEME },
     gstEnabled: false,
     gstin: null,
-    gstPercent: 0,
+    cgstPercent: 0,
+    sgstPercent: 0,
   };
 }
 

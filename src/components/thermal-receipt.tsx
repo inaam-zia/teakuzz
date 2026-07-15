@@ -6,6 +6,7 @@ import {
   formatReceiptDate,
   formatReceiptGrandTotal,
   formatReceiptTime,
+  formatTaxLineLabel,
   getBillNumber,
 } from "@/lib/receipt";
 import type { OrderItem, OrderWithItems } from "@/lib/types";
@@ -40,7 +41,8 @@ export default function ThermalReceipt({
   );
   const bill = calculateBillTotals(subTotal, {
     gstEnabled: branding.gstEnabled,
-    gstPercent: branding.gstPercent,
+    cgstPercent: branding.cgstPercent,
+    sgstPercent: branding.sgstPercent,
   });
 
   return (
@@ -123,18 +125,30 @@ export default function ThermalReceipt({
       </div>
 
       {bill.applyGst ? (
-        <div className="thermal-receipt__gst-line">
-          <span>
-            GST @ {bill.gstPercent % 1 === 0 ? bill.gstPercent : bill.gstPercent.toFixed(2)}%
-          </span>
-          <span>{formatReceiptAmount(bill.gstAmount)}</span>
-        </div>
+        <>
+          {bill.cgstPercent > 0 ? (
+            <div className="thermal-receipt__gst-line">
+              <span>
+                {formatTaxLineLabel("CGST", bill.cgstPercent, bill.subTotal)}
+              </span>
+              <span>{formatReceiptAmount(bill.cgstAmount)}</span>
+            </div>
+          ) : null}
+          {bill.sgstPercent > 0 ? (
+            <div className="thermal-receipt__gst-line">
+              <span>
+                {formatTaxLineLabel("SGST", bill.sgstPercent, bill.subTotal)}
+              </span>
+              <span>{formatReceiptAmount(bill.sgstAmount)}</span>
+            </div>
+          ) : null}
+        </>
       ) : null}
 
       <hr className="thermal-receipt__rule thermal-receipt__rule--thick" />
 
       <div className="thermal-receipt__grand-total">
-        <span>Grand Total</span>
+        <span>Bill Total</span>
         <span>{formatReceiptGrandTotal(bill.grandTotal)}</span>
       </div>
 
