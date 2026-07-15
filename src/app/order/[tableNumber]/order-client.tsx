@@ -409,6 +409,36 @@ export default function OrderClient({
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
 
+  // Lock menu scroll while cart / name-phone checkout is open
+  useEffect(() => {
+    if (!showCart) return;
+    const scrollY = window.scrollY;
+    const { body } = document;
+    const prev = {
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      overflow: body.style.overflow,
+      width: body.style.width,
+    };
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.left = "0";
+    body.style.right = "0";
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
+    return () => {
+      body.style.position = prev.position;
+      body.style.top = prev.top;
+      body.style.left = prev.left;
+      body.style.right = prev.right;
+      body.style.width = prev.width;
+      body.style.overflow = prev.overflow;
+      window.scrollTo(0, scrollY);
+    };
+  }, [showCart]);
+
   const itemsByCategory = useMemo(() => {
     const grouped = new Map<string, MenuItem[]>();
     for (const item of items) {
@@ -850,8 +880,21 @@ export default function OrderClient({
         </>
       )}
 
+      {cartCount > 0 && showCart ? (
+        <button
+          type="button"
+          className="cart-sheet-backdrop"
+          aria-label="Close order sheet"
+          onClick={() => {
+            setShowCart(false);
+            setShowCheckout(false);
+            setCheckoutError("");
+          }}
+        />
+      ) : null}
+
       {cartCount > 0 && (
-        <div className="cart-sheet">
+        <div className={`cart-sheet${showCart ? " cart-sheet--open" : ""}`}>
           {!showCart ? (
             <button
               type="button"
@@ -862,7 +905,7 @@ export default function OrderClient({
               <span>{formatPrice(cartTotal)}</span>
             </button>
           ) : (
-            <div className="mx-auto max-w-lg space-y-4">
+            <div className="cart-sheet__panel mx-auto max-w-lg space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold text-cafe-900">Your order</h3>
                 <button

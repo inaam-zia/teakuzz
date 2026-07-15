@@ -7,6 +7,7 @@ import TableHeading from "@/components/table-heading";
 import ThermalReceipt from "@/components/thermal-receipt";
 import { formatPrice } from "@/lib/format";
 import { fetchMyActiveOrders, ORDER_STATUS_POLL_MS } from "@/lib/order-poll";
+import { getOrderGrandTotal } from "@/lib/receipt";
 import type { CafeBranding } from "@/lib/branding-types";
 import type { OrderItem, OrderStatus, OrderWithItems } from "@/lib/types";
 
@@ -207,7 +208,18 @@ function DishFeedbackForm({
   );
 }
 
-function OrderStatusCard({ order }: { order: OrderWithItems }) {
+function OrderStatusCard({
+  order,
+  branding,
+}: {
+  order: OrderWithItems;
+  branding: CafeBranding;
+}) {
+  const gst = {
+    gstEnabled: branding.gstEnabled,
+    cgstPercent: branding.cgstPercent,
+    sgstPercent: branding.sgstPercent,
+  };
   return (
     <div className="rounded-2xl border border-brand bg-brand-surface p-4 shadow-sm">
       <div className="mb-4">
@@ -217,7 +229,9 @@ function OrderStatusCard({ order }: { order: OrderWithItems }) {
         <p className="text-sm font-semibold text-brand-heading">
           {STATUS_LABELS[order.status]}
         </p>
-        <p className="font-bold text-brand-muted">{formatPrice(order.total)}</p>
+        <p className="font-bold text-brand-muted">
+          {formatPrice(getOrderGrandTotal(order, gst))}
+        </p>
       </div>
       <ul className="space-y-2 border-t border-brand pt-3">
         {order.order_items.map((item) => (
@@ -457,7 +471,13 @@ export default function OrderStatusView({
               </div>
             </div>
           ) : (
-            orders.map((order) => <OrderStatusCard key={order.id} order={order} />)
+            orders.map((order) => (
+              <OrderStatusCard
+                key={order.id}
+                order={order}
+                branding={billBranding}
+              />
+            ))
           )}
         </div>
 

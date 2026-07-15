@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import TableHeading from "@/components/table-heading";
+import type { CafeBranding } from "@/lib/branding-types";
+import { getDefaultBranding } from "@/lib/branding-types";
 import { formatDateShort, formatPrice } from "@/lib/format";
 import { fetchJsonArray } from "@/lib/parse-api";
+import { getOrderGrandTotal } from "@/lib/receipt";
 import type { OrderWithItems } from "@/lib/types";
 
 type ProductStat = {
@@ -80,6 +83,15 @@ export default function AdminDashboard() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [branding, setBranding] = useState<CafeBranding>(getDefaultBranding());
+  const gst = useMemo(
+    () => ({
+      gstEnabled: branding.gstEnabled,
+      cgstPercent: branding.cgstPercent,
+      sgstPercent: branding.sgstPercent,
+    }),
+    [branding]
+  );
 
   const loadStats = useCallback(async (overrides?: { from?: string; to?: string }) => {
     setStatsLoading(true);
@@ -121,6 +133,18 @@ export default function AdminDashboard() {
       setError(loadError);
     }
     load();
+    fetch(`/api/branding?_=${Date.now()}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data: CafeBranding) =>
+        setBranding({
+          ...getDefaultBranding(),
+          ...data,
+          gstEnabled: Boolean(data.gstEnabled),
+          cgstPercent: Number(data.cgstPercent) || 0,
+          sgstPercent: Number(data.sgstPercent) || 0,
+        })
+      )
+      .catch(() => {});
     const interval = setInterval(load, 10000);
     return () => clearInterval(interval);
   }, []);
@@ -366,7 +390,9 @@ export default function AdminDashboard() {
                     {formatDateShort(order.created_at)}
                   </p>
                 </div>
-                <p className="font-bold text-cafe-700">{formatPrice(order.total)}</p>
+                <p className="font-bold text-cafe-700">
+                  {formatPrice(getOrderGrandTotal(order, gst))}
+                </p>
               </div>
             ))}
           </div>

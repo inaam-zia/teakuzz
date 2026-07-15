@@ -13,9 +13,18 @@ import {
 import { formatDate, formatPrice } from "@/lib/format";
 import { fetchJsonArray } from "@/lib/parse-api";
 import { printThermalBill } from "@/lib/print-bill";
+import { formatTaxLineLabel, getOrderBillTotals } from "@/lib/receipt";
 import type { CafeBranding } from "@/lib/branding-types";
 import { getDefaultBranding } from "@/lib/branding-types";
 import type { OrderWithItems } from "@/lib/types";
+
+function gstFromBranding(b: CafeBranding) {
+  return {
+    gstEnabled: b.gstEnabled,
+    cgstPercent: b.cgstPercent,
+    sgstPercent: b.sgstPercent,
+  };
+}
 
 export default function HistoryPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
@@ -32,7 +41,11 @@ export default function HistoryPage() {
   ]);
   const [selectedCustomerKeys, setSelectedCustomerKeys] = useState<string[]>([]);
 
-  const customers = useMemo(() => listHistoryCustomers(orders), [orders]);
+  const gst = useMemo(() => gstFromBranding(branding), [branding]);
+  const customers = useMemo(
+    () => listHistoryCustomers(orders, gst),
+    [orders, gst]
+  );
 
   useEffect(() => {
     setSelectedCustomerKeys(customers.map((c) => c.key));
@@ -102,6 +115,7 @@ export default function HistoryPage() {
     downloadOrderHistoryExcel(orders, {
       columns: exportColumns,
       customerKeys: selectedCustomerKeys,
+      gst,
       filename: `${parts.join("-")}.xlsx`,
     });
   }
@@ -369,6 +383,7 @@ export default function HistoryPage() {
           </div>
           {orders.map((order) => {
             const billOpen = expandedBillId === order.id;
+            const bill = getOrderBillTotals(order, gst);
             return (
               <div key={order.id} className="card">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -397,7 +412,7 @@ export default function HistoryPage() {
                   <div className="flex flex-col items-end gap-2">
                     <p className="text-xs capitalize text-cafe-500">{order.status}</p>
                     <p className="text-sm font-bold text-cafe-900">
-                      {formatPrice(order.total)}
+                      {formatPrice(bill.grandTotal)}
                     </p>
                     <div className="flex flex-wrap justify-end gap-2">
                       <button
@@ -428,9 +443,29 @@ export default function HistoryPage() {
                       <span>{formatPrice(item.item_price * item.quantity)}</span>
                     </li>
                   ))}
-                  <li className="flex justify-between border-t border-cafe-100 pt-2 font-bold text-cafe-900">
-                    <span>Total</span>
-                    <span>{formatPrice(order.total)}</span>
+                  <li className="flex justify-between border-t border-cafe-100 pt-2 font-semibold text-cafe-800">
+                    <span>Sub Total</span>
+                    <span>{formatPrice(bill.subTotal)}</span>
+                  </li>
+                  {bill.applyGst && bill.cgstPercent > 0 ? (
+                    <li className="flex justify-between gap-3 text-cafe-600">
+                      <span>
+                        {formatTaxLineLabel("CGST", bill.cgstPercent, bill.subTotal)}
+                      </span>
+                      <span>{formatPrice(bill.cgstAmount)}</span>
+                    </li>
+                  ) : null}
+                  {bill.applyGst && bill.sgstPercent > 0 ? (
+                    <li className="flex justify-between gap-3 text-cafe-600">
+                      <span>
+                        {formatTaxLineLabel("SGST", bill.sgstPercent, bill.subTotal)}
+                      </span>
+                      <span>{formatPrice(bill.sgstAmount)}</span>
+                    </li>
+                  ) : null}
+                  <li className="flex justify-between font-bold text-cafe-900">
+                    <span>Bill Total</span>
+                    <span>{formatPrice(bill.grandTotal)}</span>
                   </li>
                 </ul>
 

@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { getOrderGrandTotal, type GstBillOptions } from "@/lib/receipt";
 import type { OrderWithItems } from "@/lib/types";
 
 export const ORDER_EXPORT_COLUMNS = [
@@ -42,20 +43,24 @@ export function getCustomerLabel(order: OrderWithItems): string {
 }
 
 /** Unique customers from the current history result set. */
-export function listHistoryCustomers(orders: OrderWithItems[]): HistoryCustomerOption[] {
+export function listHistoryCustomers(
+  orders: OrderWithItems[],
+  gst?: GstBillOptions
+): HistoryCustomerOption[] {
   const map = new Map<string, HistoryCustomerOption>();
   for (const order of orders) {
     const key = getCustomerKey(order);
+    const amount = getOrderGrandTotal(order, gst);
     const existing = map.get(key);
     if (existing) {
       existing.orderCount += 1;
-      existing.total += Number(order.total) || 0;
+      existing.total += amount;
     } else {
       map.set(key, {
         key,
         label: getCustomerLabel(order),
         orderCount: 1,
-        total: Number(order.total) || 0,
+        total: amount,
       });
     }
   }
@@ -87,6 +92,8 @@ export type DownloadHistoryExcelOptions = {
   columns?: OrderExportColumnKey[];
   /** Only include these customer keys (default: all). */
   customerKeys?: string[];
+  /** When set, Order total / Total columns include CGST+SGST. */
+  gst?: GstBillOptions;
   filename?: string;
 };
 
@@ -111,6 +118,8 @@ export function downloadOrderHistoryExcel(
     filtered = orders.filter((o) => allowed.has(getCustomerKey(o)));
   }
 
+  const gst = options.gst;
+
   const orderRows = filtered.map((o) =>
     pickColumns(
       {
@@ -124,7 +133,7 @@ export function downloadOrderHistoryExcel(
           .map((i) => `${i.quantity}× ${i.item_name}`)
           .join("; "),
         "Item count": (o.order_items ?? []).reduce((s, i) => s + i.quantity, 0),
-        Total: Number(o.total),
+        Total: getOrderGrandTotal(o, gst),
       },
       columns
     )
@@ -144,7 +153,7 @@ export function downloadOrderHistoryExcel(
         Qty: item.quantity,
         "Unit price": Number(item.item_price),
         "Line total": Number(item.item_price) * item.quantity,
-        "Order total": Number(o.total),
+        "Order total": getOrderGrandTotal(o, gst),
       };
       const out: Record<string, string | number> = {};
       for (const [k, v] of Object.entries(full)) {

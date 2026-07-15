@@ -1,13 +1,13 @@
 /**
- * Open a print window for a thermal receipt, keep it open, and show the
- * system print dialog (Windows / macOS print preview).
+ * Open a print window for an RP82 (and similar) 3" / 80mm thermal receipt.
+ * Keeps the window open and shows the system print dialog.
  */
 export function printThermalBill(receiptEl: HTMLElement | null, title = "Bill") {
   if (!receiptEl || typeof window === "undefined") return;
 
   // Must open during the click (no noopener) so the OS print dialog can attach
   // to a real window that stays open.
-  const win = window.open("", "_blank", "width=480,height=800");
+  const win = window.open("", "_blank", "width=360,height=800");
   if (!win) {
     window.alert(
       "Could not open the print window. Allow pop-ups for this site, then try Print bill again."
@@ -26,131 +26,241 @@ export function printThermalBill(receiptEl: HTMLElement | null, title = "Bill") 
   <meta charset="utf-8" />
   <title>${escapeHtml(title)}</title>
   <style>
-    * { box-sizing: border-box; }
-    body {
+    /* RP82 · 3" (≈80mm) thermal receipt — high contrast, safe margins */
+    @page {
+      size: 80mm auto;
       margin: 0;
-      padding: 16px;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
       background: #fff;
       color: #000;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+    }
+    body {
+      width: 72mm;
+      max-width: 72mm;
+      margin: 0 auto;
+      padding: 2mm 0 4mm;
     }
     .no-print-hint {
       text-align: center;
-      font: 13px system-ui, -apple-system, Segoe UI, sans-serif;
-      color: #525252;
-      margin: 0 0 12px;
+      font: 12px system-ui, -apple-system, Segoe UI, sans-serif;
+      color: #000;
+      margin: 0 0 8px;
+      padding: 0 2mm;
     }
     .thermal-receipt {
+      width: 72mm;
+      max-width: 72mm;
       margin: 0 auto;
-      width: 100%;
-      max-width: 20rem;
-      border: 1px solid #d4d4d4;
+      border: none;
       background: #fff;
-      padding: 1.25rem 1rem;
+      padding: 1.5mm 2.5mm;
       font-family: "Courier New", Courier, ui-monospace, monospace;
-      font-size: 11px;
-      line-height: 1.35;
+      font-size: 12px;
+      line-height: 1.3;
+      font-weight: 700;
       color: #000;
+      overflow: visible;
+    }
+    .thermal-receipt *:not(img),
+    .thermal-receipt *::before,
+    .thermal-receipt *::after {
+      color: #000 !important;
+      border-color: #000 !important;
+      box-shadow: none !important;
+      max-width: 100%;
+    }
+    .thermal-receipt img {
+      max-width: 100%;
+      height: auto;
     }
     .thermal-receipt__header { text-align: center; }
     .thermal-receipt__logo {
       display: block;
-      margin: 0 auto 8px;
-      height: 48px;
-      width: 48px;
+      margin: 0 auto 3mm;
+      height: 10mm;
+      width: 10mm;
+      max-width: 10mm;
       object-fit: contain;
+      filter: grayscale(1) contrast(1.4);
     }
     .thermal-receipt__brand {
-      margin: 0 0 4px;
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: 0.04em;
+      margin: 0 0 1mm;
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      word-break: break-word;
+      overflow-wrap: anywhere;
     }
     .thermal-receipt__address {
       margin: 0;
       font-size: 10px;
-      line-height: 1.35;
+      line-height: 1.25;
+      font-weight: 700;
+      word-break: break-word;
+      overflow-wrap: anywhere;
     }
     .thermal-receipt__gst {
-      margin: 4px 0 0;
+      margin: 1.5mm 0 0;
       font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.02em;
+      font-weight: 900;
+      letter-spacing: 0.01em;
+      word-break: break-word;
+      overflow-wrap: anywhere;
     }
     .thermal-receipt__qty-line {
-      margin-bottom: 4px;
-      font-size: 10px;
-    }
-    .thermal-receipt__gst-line {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      margin-top: 2px;
+      margin-bottom: 1mm;
       font-size: 11px;
+      font-weight: 700;
     }
-    .thermal-receipt__rule {
-      margin: 8px 0;
-      border: 0;
-      border-top: 1px dashed #a3a3a3;
-    }
-    .thermal-receipt__rule--thick {
-      border-top: 2px solid #171717;
-    }
+    .thermal-receipt__gst-line,
+    .thermal-receipt__subtotal,
+    .thermal-receipt__grand-total,
     .thermal-receipt__name-row {
       display: flex;
+      align-items: flex-start;
       justify-content: space-between;
-      gap: 8px;
-      font-weight: 600;
+      gap: 2mm;
+      width: 100%;
+    }
+    .thermal-receipt__gst-line {
+      margin-top: 0.8mm;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .thermal-receipt__gst-line > span:first-child,
+    .thermal-receipt__subtotal > span:first-child,
+    .thermal-receipt__grand-total > span:first-child,
+    .thermal-receipt__name-row > span:first-child {
+      min-width: 0;
+      flex: 1 1 auto;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .thermal-receipt__gst-line > span:last-child,
+    .thermal-receipt__subtotal > span:last-child,
+    .thermal-receipt__grand-total > span:last-child {
+      flex: 0 0 auto;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .thermal-receipt__rule {
+      margin: 2mm 0;
+      border: 0;
+      border-top: 1px dashed #000;
+      height: 0;
+    }
+    .thermal-receipt__rule--thick {
+      border-top: 2px solid #000;
+    }
+    .thermal-receipt__name-row {
+      font-weight: 700;
+      font-size: 12px;
+    }
+    .thermal-receipt__name-value {
+      flex: 1 1 auto;
+      min-width: 0;
+      border-bottom: 1px solid #000;
+      padding-bottom: 0.5mm;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      text-align: left;
     }
     .thermal-receipt__meta {
       display: flex;
       justify-content: space-between;
-      gap: 12px;
-      margin-top: 6px;
+      gap: 2mm;
+      margin-top: 1.5mm;
+      width: 100%;
+    }
+    .thermal-receipt__meta-col {
+      min-width: 0;
+      flex: 1 1 50%;
+      font-size: 10px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
     .thermal-receipt__meta-col--right { text-align: right; }
-    .thermal-receipt__meta p { margin: 0 0 2px; }
-    .thermal-receipt__meta-label { font-weight: 600; }
+    .thermal-receipt__meta p { margin: 0 0 0.6mm; }
+    .thermal-receipt__meta-label { font-weight: 900; }
     .thermal-receipt__table {
       width: 100%;
+      max-width: 100%;
       border-collapse: collapse;
-    }
-    .thermal-receipt__th-item { text-align: left; }
-    .thermal-receipt__th-num,
-    .thermal-receipt__num { text-align: right; }
-    .thermal-receipt__table th,
-    .thermal-receipt__table td {
-      padding: 2px 0;
-      vertical-align: top;
-    }
-    .thermal-receipt__item-name { text-align: left; padding-right: 6px; }
-    .thermal-receipt__subtotal,
-    .thermal-receipt__grand-total {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
+      table-layout: fixed;
+      font-size: 11px;
       font-weight: 700;
     }
+    .thermal-receipt__th-item,
+    .thermal-receipt__item-name {
+      width: 46%;
+      text-align: left;
+      padding-right: 1.5mm;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      vertical-align: top;
+    }
+    .thermal-receipt__th-num,
+    .thermal-receipt__num {
+      width: 18%;
+      text-align: right;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+      vertical-align: top;
+      padding: 0.6mm 0;
+    }
+    .thermal-receipt__table th {
+      padding: 0.6mm 0 1mm;
+      font-weight: 900;
+      border-bottom: 1px solid #000;
+    }
+    .thermal-receipt__table td {
+      padding: 0.6mm 0;
+      font-weight: 700;
+    }
+    .thermal-receipt__subtotal {
+      font-size: 11px;
+      font-weight: 900;
+    }
     .thermal-receipt__grand-total {
-      margin-top: 4px;
-      font-size: 12px;
+      margin-top: 1.5mm;
+      font-size: 13px;
+      font-weight: 900;
     }
     .thermal-receipt__thanks {
-      margin-top: 8px;
+      margin-top: 2.5mm;
       text-align: center;
-      font-size: 11px;
-      font-weight: 600;
+      font-size: 12px;
+      font-weight: 900;
     }
     @media print {
-      body { padding: 0; }
+      html, body {
+        width: 72mm;
+        max-width: 72mm;
+      }
+      body { padding: 1mm 0 3mm; }
       .no-print-hint { display: none !important; }
-      .thermal-receipt { border: none; max-width: none; box-shadow: none; }
+      .thermal-receipt {
+        border: none;
+        max-width: 72mm;
+        width: 72mm;
+        padding: 1mm 2mm;
+      }
     }
   </style>
 </head>
 <body>
-  <p class="no-print-hint">Use the print dialog to print or save as PDF. You can close this window when finished.</p>
+  <p class="no-print-hint">Print dialog opens for your RP82 / 3″ thermal printer. Set paper to 80mm / 3″ receipt. Close this window when finished.</p>
   ${clone.outerHTML}
 </body>
 </html>`);
@@ -168,7 +278,6 @@ export function printThermalBill(receiptEl: HTMLElement | null, title = "Bill") 
 
   const imgs = Array.from(win.document.images || []);
   if (!imgs.length) {
-    // Let the new window paint, then show the system print dialog
     win.setTimeout(triggerPrint, 250);
     return;
   }
@@ -189,7 +298,6 @@ export function printThermalBill(receiptEl: HTMLElement | null, title = "Bill") 
       img.onerror = done;
     }
   });
-  // Safety: still open print dialog if an image stalls
   win.setTimeout(() => {
     if (!printed) {
       printed = true;

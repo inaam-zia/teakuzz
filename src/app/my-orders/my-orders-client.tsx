@@ -5,9 +5,12 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import DeveloperCredit from "@/components/developer-credit";
 import TableHeading from "@/components/table-heading";
+import type { CafeBranding } from "@/lib/branding-types";
+import { getDefaultBranding } from "@/lib/branding-types";
 import { formatDate, formatPrice } from "@/lib/format";
 import { isValidEmail, normalizeEmail } from "@/lib/email";
 import { normalizePhone } from "@/lib/phone";
+import { getOrderGrandTotal } from "@/lib/receipt";
 import type { CustomerIdentity } from "@/lib/auth";
 import type { OrderWithItems } from "@/lib/types";
 
@@ -32,7 +35,18 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
-function OrderCard({ order }: { order: OrderWithItems }) {
+function OrderCard({
+  order,
+  branding,
+}: {
+  order: OrderWithItems;
+  branding: CafeBranding;
+}) {
+  const total = getOrderGrandTotal(order, {
+    gstEnabled: branding.gstEnabled,
+    cgstPercent: branding.cgstPercent,
+    sgstPercent: branding.sgstPercent,
+  });
   return (
     <div className="rounded-2xl border border-cafe-200 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -53,7 +67,7 @@ function OrderCard({ order }: { order: OrderWithItems }) {
           <p className="text-sm text-cafe-500">{formatDate(order.created_at)}</p>
         </div>
         <div className="text-right">
-          <p className="font-bold text-cafe-700">{formatPrice(order.total)}</p>
+          <p className="font-bold text-cafe-700">{formatPrice(total)}</p>
           <p className="text-xs text-cafe-500">{STATUS_LABELS[order.status] || order.status}</p>
         </div>
       </div>
@@ -85,6 +99,22 @@ export default function MyOrdersClient({ cafeName }: Props) {
   const [sending, setSending] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [devCode, setDevCode] = useState("");
+  const [branding, setBranding] = useState<CafeBranding>(getDefaultBranding());
+
+  useEffect(() => {
+    fetch(`/api/branding?_=${Date.now()}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data: CafeBranding) =>
+        setBranding({
+          ...getDefaultBranding(),
+          ...data,
+          gstEnabled: Boolean(data.gstEnabled),
+          cgstPercent: Number(data.cgstPercent) || 0,
+          sgstPercent: Number(data.sgstPercent) || 0,
+        })
+      )
+      .catch(() => {});
+  }, []);
 
   async function loadOrders(skipVerify = false) {
     setError("");
@@ -444,7 +474,7 @@ export default function MyOrdersClient({ cafeName }: Props) {
               ) : (
                 <div className="space-y-3">
                   {orders.map((order) => (
-                    <OrderCard key={order.id} order={order} />
+                    <OrderCard key={order.id} order={order} branding={branding} />
                   ))}
                 </div>
               )}

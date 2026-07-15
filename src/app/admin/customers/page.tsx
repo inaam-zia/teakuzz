@@ -2,8 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import TableHeading from "@/components/table-heading";
+import type { CafeBranding } from "@/lib/branding-types";
+import { getDefaultBranding } from "@/lib/branding-types";
 import { formatDate, formatPrice } from "@/lib/format";
 import { fetchJsonArray } from "@/lib/parse-api";
+import { getOrderGrandTotal, type GstBillOptions } from "@/lib/receipt";
 import type { OrderStatus, OrderWithItems } from "@/lib/types";
 
 type CustomerGroup = {
@@ -24,7 +27,10 @@ const statusColors: Record<OrderStatus, string> = {
   cancelled: "bg-gray-100 text-gray-600",
 };
 
-function groupByCustomer(orders: OrderWithItems[]): CustomerGroup[] {
+function groupByCustomer(
+  orders: OrderWithItems[],
+  gst?: GstBillOptions
+): CustomerGroup[] {
   const map = new Map<string, CustomerGroup>();
 
   for (const order of orders) {
@@ -32,12 +38,13 @@ function groupByCustomer(orders: OrderWithItems[]): CustomerGroup[] {
     const phone = order.customer_phone?.trim() || null;
     // Phone is the most reliable identity; fall back to name for walk-ins.
     const key = phone ? `p:${phone}` : `n:${name.toLowerCase()}`;
+    const amount = getOrderGrandTotal(order, gst);
 
     const existing = map.get(key);
     if (existing) {
       existing.orders.push(order);
       existing.orderCount += 1;
-      existing.totalSpent += order.total;
+      existing.totalSpent += amount;
       if (order.created_at > existing.lastOrderAt) {
         existing.lastOrderAt = order.created_at;
         existing.name = name;
@@ -53,7 +60,7 @@ function groupByCustomer(orders: OrderWithItems[]): CustomerGroup[] {
         email: order.customer_email?.trim() || null,
         orders: [order],
         orderCount: 1,
-        totalSpent: order.total,
+        totalSpent: amount,
         lastOrderAt: order.created_at,
       });
     }
@@ -66,6 +73,7 @@ function groupByCustomer(orders: OrderWithItems[]): CustomerGroup[] {
 
 export default function CustomersPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
+  const [branding, setBranding] = useState<CafeBranding>(getDefaultBranding());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -73,7 +81,21 @@ export default function CustomersPage() {
 
   useEffect(() => {
     async function load() {
-      const { items, error: loadError } = await fetchJsonArray<OrderWithItems>("/api/orders");
+      const [{ items, error: loadError }] = await Promise.all([
+        fetchJsonArray<OrderWithItems>("/api/orders"),
+        fetch(`/api/branding?_=${Date.now()}`, { cache: "no-store" })
+          .then((r) => r.json())
+          .then((data: CafeBranding) => {
+            setBranding({
+              ...getDefaultBranding(),
+              ...data,
+              gstEnabled: Boolean(data.gstEnabled),
+              cgstPercent: Number(data.cgstPercent) || 0,
+              sgstPercent: Number(data.sgstPercent) || 0,
+            });
+          })
+          .catch(() => {}),
+      ]);
       setOrders(items);
       setError(loadError);
       setLoading(false);
@@ -81,7 +103,15 @@ export default function CustomersPage() {
     load();
   }, []);
 
-  const customers = useMemo(() => groupByCustomer(orders), [orders]);
+  const gst = useMemo(
+    () => ({
+      gstEnabled: branding.gstEnabled,
+      cgstPercent: branding.cgstPercent,
+      sgstPercent: branding.sgstPercent,
+    }),
+    [branding]
+  );
+  const customers = useMemo(() => groupByCustomer(orders, gst), [orders, gst]);
 
   const query = search.trim().toLowerCase();
   const filtered = useMemo(() => {
@@ -212,7 +242,7 @@ export default function CustomersPage() {
                               {order.status}
                             </span>
                             <p className="font-bold text-cafe-700">
-                              {formatPrice(order.total)}
+                              {formatPrice(getOrderGrandTotal(order, gst))}
                             </p>
                           </div>
                         </div>
@@ -227,6 +257,10 @@ export default function CustomersPage() {
                               </span>
                             </li>
                           ))}
+                          <li className="flex justify-between border-t border-cafe-100 pt-2 font-bold text-cafe-900">
+                            <span>Bill Total</span>
+                            <span>{formatPrice(getOrderGrandTotal(order, gst))}</span>
+                          </li>
                         </ul>
                       </div>
                     ))}

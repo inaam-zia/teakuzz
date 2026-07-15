@@ -2,8 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import type { CafeBranding } from "@/lib/branding-types";
+import { getDefaultBranding } from "@/lib/branding-types";
 import { formatDateShort, formatPrice } from "@/lib/format";
 import { fetchJsonArray } from "@/lib/parse-api";
+import { getOrderGrandTotal } from "@/lib/receipt";
 import type { OrderStatus, OrderWithItems } from "@/lib/types";
 import TableHeading from "@/components/table-heading";
 import { useNewOrders } from "../new-orders-context";
@@ -74,6 +77,16 @@ export default function LiveOrdersPage() {
   const [lowStock, setLowStock] = useState<
     { id: string; name: string; quantity: number; unit: string }[]
   >([]);
+  const [branding, setBranding] = useState<CafeBranding>(getDefaultBranding());
+
+  const gst = useMemo(
+    () => ({
+      gstEnabled: branding.gstEnabled,
+      cgstPercent: branding.cgstPercent,
+      sgstPercent: branding.sgstPercent,
+    }),
+    [branding]
+  );
 
   async function loadOrders() {
     const from = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
@@ -103,6 +116,18 @@ export default function LiveOrdersPage() {
   useEffect(() => {
     loadOrders();
     loadLowStock();
+    fetch(`/api/branding?_=${Date.now()}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data: CafeBranding) =>
+        setBranding({
+          ...getDefaultBranding(),
+          ...data,
+          gstEnabled: Boolean(data.gstEnabled),
+          cgstPercent: Number(data.cgstPercent) || 0,
+          sgstPercent: Number(data.sgstPercent) || 0,
+        })
+      )
+      .catch(() => {});
     const interval = setInterval(loadOrders, 8000);
     const stockInterval = setInterval(loadLowStock, 30000);
     return () => {
@@ -148,21 +173,22 @@ export default function LiveOrdersPage() {
     for (const order of servedOrders) {
       if (activeNumbers.has(order.table_number)) continue;
       if (cleared.has(order.table_number)) continue;
+      const amount = getOrderGrandTotal(order, gst);
       const existing = map.get(order.table_number);
       if (existing) {
-        existing.total += order.total;
+        existing.total += amount;
       } else {
         map.set(order.table_number, {
           tableNumber: order.table_number,
           tableLabel: order.table_label,
-          total: order.total,
+          total: amount,
           guests: order.customer_name || "Guest",
         });
       }
     }
 
     return Array.from(map.values()).sort((a, b) => a.tableNumber - b.tableNumber);
-  }, [orders, servedOrders, clearedTables]);
+  }, [orders, servedOrders, clearedTables, gst]);
 
   async function updateStatus(orderId: string, status: OrderStatus) {
     setUpdatingId(orderId);
@@ -400,7 +426,7 @@ export default function LiveOrdersPage() {
                 ))}
                 <li className="flex justify-between border-t border-cafe-200 pt-2 text-sm font-bold text-cafe-900">
                   <span>Total</span>
-                  <span>{formatPrice(order.total)}</span>
+                  <span>{formatPrice(getOrderGrandTotal(order, gst))}</span>
                 </li>
               </ul>
 

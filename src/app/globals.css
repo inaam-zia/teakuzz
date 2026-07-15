@@ -295,7 +295,33 @@
   }
 
   .cart-sheet {
-    @apply order-footer fixed bottom-0 left-0 right-0 p-5 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] backdrop-blur-md;
+    @apply order-footer fixed bottom-0 left-0 right-0 z-30 p-5 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] backdrop-blur-md;
+  }
+
+  .cart-sheet--open {
+    max-height: min(85dvh, 100%);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cart-sheet__panel {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    max-height: calc(85dvh - 2.5rem);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .cart-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    background: rgba(0, 0, 0, 0.35);
+    cursor: pointer;
   }
 
   .cart-line {
@@ -327,6 +353,8 @@
     font-family: "Courier New", Courier, ui-monospace, monospace;
     font-size: 11px;
     line-height: 1.35;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   .thermal-receipt__header {
@@ -385,24 +413,30 @@
 
   .thermal-receipt__table {
     @apply w-full border-collapse text-[10px];
+    table-layout: fixed;
   }
 
   .thermal-receipt__th-item {
     @apply pb-1 text-left font-bold;
+    width: 46%;
   }
 
   .thermal-receipt__th-num {
     @apply pb-1 text-right font-bold;
-    width: 2.5rem;
+    width: 18%;
+    white-space: nowrap;
   }
 
   .thermal-receipt__item-name {
     @apply py-0.5 pr-1 align-top;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   .thermal-receipt__num {
     @apply py-0.5 text-right align-top tabular-nums;
-    width: 2.5rem;
+    width: 18%;
+    white-space: nowrap;
   }
 
   .thermal-receipt__qty-line {

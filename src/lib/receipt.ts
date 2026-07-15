@@ -66,16 +66,57 @@ export function formatTaxLineLabel(
   return `${kind} ${formatPercentLabel(percent)}% on ${subTotal.toFixed(2)}`;
 }
 
+export type GstBillOptions = {
+  gstEnabled?: boolean;
+  cgstPercent?: number | null;
+  sgstPercent?: number | null;
+  /** @deprecated use cgstPercent + sgstPercent; split evenly if only this is set */
+  gstPercent?: number | null;
+};
+
+/** Subtotal from order line items (pre-tax). */
+export function orderItemsSubtotal(
+  items: Array<{ item_price: number; quantity: number }> | null | undefined
+): number {
+  if (!items?.length) return 0;
+  return roundMoney(
+    items.reduce((sum, item) => sum + Number(item.item_price) * item.quantity, 0)
+  );
+}
+
+/**
+ * Bill totals for a stored order. DB `total` is pre-tax; GST is applied from settings.
+ */
+export function getOrderBillTotals(
+  order: {
+    total?: number | null;
+    order_items?: Array<{ item_price: number; quantity: number }> | null;
+  },
+  options?: GstBillOptions
+): BillTotals {
+  const fromItems = orderItemsSubtotal(order.order_items);
+  const subTotal =
+    fromItems > 0 || (order.order_items?.length ?? 0) > 0
+      ? fromItems
+      : roundMoney(Number(order.total) || 0);
+  return calculateBillTotals(subTotal, options);
+}
+
+/** Payable amount (subtotal + CGST + SGST when GST is enabled). */
+export function getOrderGrandTotal(
+  order: {
+    total?: number | null;
+    order_items?: Array<{ item_price: number; quantity: number }> | null;
+  },
+  options?: GstBillOptions
+): number {
+  return getOrderBillTotals(order, options).grandTotal;
+}
+
 /** Calculate bill totals with optional CGST + SGST %. */
 export function calculateBillTotals(
   subTotal: number,
-  options?: {
-    gstEnabled?: boolean;
-    cgstPercent?: number | null;
-    sgstPercent?: number | null;
-    /** @deprecated use cgstPercent + sgstPercent; split evenly if only this is set */
-    gstPercent?: number | null;
-  }
+  options?: GstBillOptions
 ): BillTotals {
   const base = roundMoney(subTotal);
   let cgstPercent = Number(options?.cgstPercent);
