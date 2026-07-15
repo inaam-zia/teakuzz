@@ -40,7 +40,14 @@ function normalizePercent(raw?: number | string | null): number {
   return Math.min(100, Math.round(n * 100) / 100);
 }
 
-function resolveTaxPercents(row: SettingsRow): {
+/** Common restaurant CGST/SGST when GST is on but rates were never saved. */
+const DEFAULT_CGST_PERCENT = 2.5;
+const DEFAULT_SGST_PERCENT = 2.5;
+
+function resolveTaxPercents(
+  row: SettingsRow,
+  gstEnabled: boolean
+): {
   cgstPercent: number;
   sgstPercent: number;
 } {
@@ -53,19 +60,26 @@ function resolveTaxPercents(row: SettingsRow): {
       sgst = Math.round((legacy / 2) * 100) / 100;
     }
   }
+  // GSTIN can be saved with gst_enabled while CGST/SGST columns are still 0
+  // (or migration not applied). Still show tax lines when GST is on.
+  if (gstEnabled && cgst <= 0 && sgst <= 0) {
+    cgst = DEFAULT_CGST_PERCENT;
+    sgst = DEFAULT_SGST_PERCENT;
+  }
   return { cgstPercent: cgst, sgstPercent: sgst };
 }
 
 function rowToBranding(row: SettingsRow, defaults: CafeBranding): CafeBranding {
   const gstin = normalizeGstin(row.gstin);
-  const { cgstPercent, sgstPercent } = resolveTaxPercents(row);
+  const gstEnabled = Boolean(row.gst_enabled);
+  const { cgstPercent, sgstPercent } = resolveTaxPercents(row, gstEnabled);
   return {
     appName: row.app_name?.trim() || defaults.appName,
     logoUrl: row.logo_url || null,
     tagline: row.tagline?.trim() || defaults.tagline,
     theme: mergeTheme(row.theme),
     // Tax lines depend on enable + rates; GSTIN is optional display
-    gstEnabled: Boolean(row.gst_enabled),
+    gstEnabled,
     gstin,
     cgstPercent,
     sgstPercent,

@@ -95,6 +95,16 @@ export function calculateBillTotals(
   if (!Number.isFinite(cgstPercent) || cgstPercent < 0) cgstPercent = 0;
   if (!Number.isFinite(sgstPercent) || sgstPercent < 0) sgstPercent = 0;
 
+  // GST enabled in settings but rates missing → standard 2.5% + 2.5%
+  if (
+    Boolean(options?.gstEnabled) &&
+    cgstPercent <= 0 &&
+    sgstPercent <= 0
+  ) {
+    cgstPercent = 2.5;
+    sgstPercent = 2.5;
+  }
+
   const applyGst =
     Boolean(options?.gstEnabled) && (cgstPercent > 0 || sgstPercent > 0);
 

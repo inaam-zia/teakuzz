@@ -110,23 +110,64 @@ export async function PATCH(request: Request) {
       updates.gst_percent = Math.round((c + s) * 100) / 100;
     }
 
+    // If GST is being turned on without explicit rates, persist defaults so bills
+    // do not end up with GSTIN only and 0% tax.
+    if (updates.gst_enabled === true) {
+      const nextCgst =
+        updates.cgst_percent !== undefined
+          ? updates.cgst_percent
+          : current.cgstPercent;
+      const nextSgst =
+        updates.sgst_percent !== undefined
+          ? updates.sgst_percent
+          : current.sgstPercent;
+      if (nextCgst <= 0 && nextSgst <= 0) {
+        updates.cgst_percent = 2.5;
+        updates.sgst_percent = 2.5;
+        updates.gst_percent = 5;
+      }
+    }
+
     const supabase = createServerClient();
-    const { error } = await supabase
+    let { error } = await supabase
       .from("cafe_settings")
       .upsert({ id: 1, ...updates })
       .select()
       .single();
 
-    if (error) {
+    // Older DBs may lack cgst_percent / sgst_percent — fall back to gst_percent only.
+    if (
+      error &&
+      (error.message.includes("cgst_percent") ||
+        error.message.includes("sgst_percent"))
+    ) {
+      const {
+        cgst_percent: _c,
+        sgst_percent: _s,
+        ...legacyUpdates
+      } = updates;
       if (
-        error.message.includes("cgst_percent") ||
-        error.message.includes("sgst_percent") ||
-        error.message.includes("gst_")
+        updates.cgst_percent !== undefined ||
+        updates.sgst_percent !== undefined
       ) {
+        const c = updates.cgst_percent ?? current.cgstPercent;
+        const s = updates.sgst_percent ?? current.sgstPercent;
+        legacyUpdates.gst_percent = Math.round((c + s) * 100) / 100;
+      }
+      const retry = await supabase
+        .from("cafe_settings")
+        .upsert({ id: 1, ...legacyUpdates })
+        .select()
+        .single();
+      error = retry.error;
+    }
+
+    if (error) {
+      if (error.message.includes("gst_")) {
         return NextResponse.json(
           {
             error:
-              "Run supabase/add-cgst-sgst.sql in Supabase SQL editor to enable CGST/SGST.",
+              "Run supabase/add-gst.sql and supabase/add-cgst-sgst.sql in Supabase SQL editor.",
           },
           { status: 503 }
         );
