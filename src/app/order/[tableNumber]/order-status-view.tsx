@@ -295,6 +295,8 @@ export default function OrderStatusView({
   const [paymentQrLabel, setPaymentQrLabel] = useState<string | null>(null);
   const [paymentUpiId, setPaymentUpiId] = useState<string | null>(null);
   const [paymentPayeeName, setPaymentPayeeName] = useState<string | null>(null);
+  /** Fresh branding for the bill (GST %, GSTIN) when all orders are served */
+  const [billBranding, setBillBranding] = useState<CafeBranding>(branding);
 
   const loadPaymentQr = useCallback(async () => {
     const res = await fetch(`/api/payment-qr?_=${Date.now()}`, { cache: "no-store" });
@@ -305,6 +307,24 @@ export default function OrderStatusView({
     setPaymentUpiId(data.qr?.upiId ?? null);
     setPaymentPayeeName(data.qr?.payeeName ?? null);
   }, []);
+
+  const loadBillBranding = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/branding?_=${Date.now()}`, { cache: "no-store" });
+      if (!res.ok) return;
+      const data = (await res.json()) as CafeBranding;
+      setBillBranding({
+        ...branding,
+        ...data,
+        gstEnabled: Boolean(data.gstEnabled),
+        gstin: data.gstin ?? null,
+        cgstPercent: Number(data.cgstPercent) || 0,
+        sgstPercent: Number(data.sgstPercent) || 0,
+      });
+    } catch {
+      /* keep previous branding */
+    }
+  }, [branding]);
 
   const loadFeedback = useCallback(async () => {
     const res = await fetch(`/api/feedback?table=${tableNumber}&_=${Date.now()}`, {
@@ -367,6 +387,12 @@ export default function OrderStatusView({
   const allCancelled =
     orders.length > 0 && orders.every((o) => o.status === "cancelled");
 
+  // When the bill is generated (all served), reload GST/CGST/SGST from admin settings
+  useEffect(() => {
+    if (!allServed || allCancelled) return;
+    void loadBillBranding();
+  }, [allServed, allCancelled, loadBillBranding]);
+
   return (
     <main className="order-bg mx-auto min-h-screen max-w-lg px-5 py-8">
       <div className="mb-6">
@@ -407,7 +433,7 @@ export default function OrderStatusView({
               <ThermalReceipt
                 order={consolidatedOrder}
                 customerName={customerName}
-                branding={branding}
+                branding={billBranding}
                 paymentQrUrl={paymentQrUrl}
                 paymentQrLabel={paymentQrLabel}
                 paymentUpiId={paymentUpiId}
