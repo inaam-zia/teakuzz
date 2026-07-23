@@ -116,34 +116,63 @@ export function printThermalBill(receiptEl: HTMLElement | null, title = "Bill") 
       word-break: break-word;
       overflow-wrap: anywhere;
     }
-    .thermal-receipt__qty-line {
-      margin-bottom: 1mm;
-      font-size: 11px;
-      font-weight: 700;
+    .thermal-receipt__totals-block {
+      padding: 0.5mm 0;
     }
-    .thermal-receipt__gst-line,
-    .thermal-receipt__subtotal,
-    .thermal-receipt__grand-total,
-    .thermal-receipt__name-row {
+    .thermal-receipt__qty-subtotal-row {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
       gap: 2mm;
       width: 100%;
     }
-    .thermal-receipt__gst-line {
-      margin-top: 0.8mm;
+    .thermal-receipt__qty-line {
+      margin: 0;
+      flex: 0 0 auto;
       font-size: 11px;
-      font-weight: 700;
+      font-weight: 400;
+      white-space: nowrap;
+    }
+    .thermal-receipt__subtotal,
+    .thermal-receipt__grand-total,
+    .thermal-receipt__name-row,
+    .thermal-receipt__gst-line {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 2mm;
+      width: 100%;
+    }
+    .thermal-receipt__subtotal {
+      flex: 1 1 auto;
+      min-width: 0;
+      justify-content: flex-end;
+      font-size: 11px;
+      font-weight: 400;
+    }
+    .thermal-receipt__subtotal > span:first-child {
+      margin-right: 2mm;
+    }
+    .thermal-receipt__tax-lines {
+      margin-top: 0.6mm;
+    }
+    .thermal-receipt__gst-line {
+      margin-top: 0.4mm;
+      font-size: 8.5px;
+      font-weight: 400;
+      line-height: 1.2;
     }
     .thermal-receipt__gst-line > span:first-child,
     .thermal-receipt__subtotal > span:first-child,
-    .thermal-receipt__grand-total > span:first-child,
-    .thermal-receipt__name-row > span:first-child {
+    .thermal-receipt__grand-total > span:first-child {
       min-width: 0;
       flex: 1 1 auto;
       overflow-wrap: anywhere;
       word-break: break-word;
+    }
+    .thermal-receipt__name-row > span:first-child {
+      flex: 0 0 auto;
+      white-space: nowrap;
     }
     .thermal-receipt__gst-line > span:last-child,
     .thermal-receipt__subtotal > span:last-child,
@@ -157,20 +186,23 @@ export function printThermalBill(receiptEl: HTMLElement | null, title = "Bill") 
       border: 0;
       border-top: 1px dashed #000;
       height: 0;
+      width: 100%;
+      display: block;
     }
     .thermal-receipt__rule--thick {
+      margin: 1.5mm 0;
       border-top: 2px solid #000;
     }
     .thermal-receipt__name-row {
-      font-weight: 700;
+      font-weight: 400;
       font-size: 12px;
     }
     .thermal-receipt__name-value {
       flex: 1 1 auto;
       min-width: 0;
-      border-bottom: 1px solid #000;
-      padding-bottom: 0.5mm;
-      font-weight: 700;
+      border-bottom: none;
+      padding-bottom: 0;
+      font-weight: 400;
       overflow-wrap: anywhere;
       word-break: break-word;
       text-align: left;
@@ -179,7 +211,7 @@ export function printThermalBill(receiptEl: HTMLElement | null, title = "Bill") 
       display: flex;
       justify-content: space-between;
       gap: 2mm;
-      margin-top: 1.5mm;
+      margin-top: 0;
       width: 100%;
     }
     .thermal-receipt__meta-col {
@@ -228,12 +260,9 @@ export function printThermalBill(receiptEl: HTMLElement | null, title = "Bill") 
       padding: 0.6mm 0;
       font-weight: 700;
     }
-    .thermal-receipt__subtotal {
-      font-size: 11px;
-      font-weight: 900;
-    }
     .thermal-receipt__grand-total {
-      margin-top: 1.5mm;
+      margin: 0;
+      padding: 1mm 0;
       font-size: 13px;
       font-weight: 900;
     }

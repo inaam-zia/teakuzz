@@ -379,15 +379,15 @@
   }
 
   .thermal-receipt__gst-line {
-    @apply mt-0.5 flex items-center justify-between gap-2 text-[11px];
+    @apply mt-0.5 flex items-center justify-between gap-2 text-[9px] leading-tight text-black;
   }
 
   .thermal-receipt__rule {
-    @apply my-2 border-0 border-t border-dashed border-neutral-400;
+    @apply my-2 block w-full border-0 border-t border-dashed border-neutral-400;
   }
 
   .thermal-receipt__rule--thick {
-    @apply border-solid border-neutral-800;
+    @apply border-solid border-black;
     border-top-width: 2px;
   }
 
@@ -396,11 +396,11 @@
   }
 
   .thermal-receipt__name-value {
-    @apply flex-1 border-b border-neutral-800 pb-0.5 font-medium;
+    @apply min-w-0 flex-1 font-normal;
   }
 
   .thermal-receipt__meta {
-    @apply mt-2 grid grid-cols-2 gap-2 text-[10px];
+    @apply mt-0 grid grid-cols-2 gap-2 text-[10px];
   }
 
   .thermal-receipt__meta-col--right {
@@ -439,16 +439,28 @@
     white-space: nowrap;
   }
 
+  .thermal-receipt__totals-block {
+    @apply py-0.5;
+  }
+
+  .thermal-receipt__qty-subtotal-row {
+    @apply flex items-start justify-between gap-2;
+  }
+
   .thermal-receipt__qty-line {
-    @apply mb-1 text-[10px];
+    @apply shrink-0 text-[11px] font-normal;
   }
 
   .thermal-receipt__subtotal {
-    @apply flex items-center justify-between gap-2 text-[11px] font-semibold;
+    @apply flex min-w-0 flex-1 items-center justify-end gap-2 text-[11px] font-normal;
+  }
+
+  .thermal-receipt__tax-lines {
+    @apply mt-0.5;
   }
 
   .thermal-receipt__grand-total {
-    @apply mt-1 flex items-center justify-between gap-2 text-xs font-bold;
+    @apply flex items-center justify-between gap-2 py-1 text-xs font-bold;
   }
 
   .thermal-receipt__thanks {

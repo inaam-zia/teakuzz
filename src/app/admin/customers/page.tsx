@@ -6,7 +6,7 @@ import type { CafeBranding } from "@/lib/branding-types";
 import { getDefaultBranding } from "@/lib/branding-types";
 import { formatDate, formatPrice } from "@/lib/format";
 import { fetchJsonArray } from "@/lib/parse-api";
-import { getOrderGrandTotal, type GstBillOptions } from "@/lib/receipt";
+import { formatTaxLineLabel, getOrderBillTotals, getOrderGrandTotal, type GstBillOptions } from "@/lib/receipt";
 import type { OrderStatus, OrderWithItems } from "@/lib/types";
 
 type CustomerGroup = {
@@ -257,10 +257,54 @@ export default function CustomersPage() {
                               </span>
                             </li>
                           ))}
-                          <li className="flex justify-between border-t border-cafe-100 pt-2 font-bold text-cafe-900">
-                            <span>Bill Total</span>
-                            <span>{formatPrice(getOrderGrandTotal(order, gst))}</span>
-                          </li>
+                          {(() => {
+                            const bill = getOrderBillTotals(order, gst);
+                            const qty = order.order_items.reduce(
+                              (s, i) => s + i.quantity,
+                              0
+                            );
+                            return (
+                              <>
+                                <li className="border-y-2 border-cafe-900 py-2">
+                                  <div className="flex justify-between gap-3 font-normal text-cafe-800">
+                                    <span>Total Qty: {qty}</span>
+                                    <span className="flex gap-3">
+                                      <span>Sub Total</span>
+                                      <span>{formatPrice(bill.subTotal)}</span>
+                                    </span>
+                                  </div>
+                                  {bill.applyGst && bill.cgstPercent > 0 ? (
+                                    <div className="mt-1 flex justify-between gap-3 text-[11px] leading-snug text-cafe-500">
+                                      <span>
+                                        {formatTaxLineLabel(
+                                          "CGST",
+                                          bill.cgstPercent,
+                                          bill.subTotal
+                                        )}
+                                      </span>
+                                      <span>{formatPrice(bill.cgstAmount)}</span>
+                                    </div>
+                                  ) : null}
+                                  {bill.applyGst && bill.sgstPercent > 0 ? (
+                                    <div className="mt-0.5 flex justify-between gap-3 text-[11px] leading-snug text-cafe-500">
+                                      <span>
+                                        {formatTaxLineLabel(
+                                          "SGST",
+                                          bill.sgstPercent,
+                                          bill.subTotal
+                                        )}
+                                      </span>
+                                      <span>{formatPrice(bill.sgstAmount)}</span>
+                                    </div>
+                                  ) : null}
+                                </li>
+                                <li className="flex justify-between border-b-2 border-cafe-900 py-2 font-bold text-cafe-900">
+                                  <span>Grand Total</span>
+                                  <span>{formatPrice(bill.grandTotal)}</span>
+                                </li>
+                              </>
+                            );
+                          })()}
                         </ul>
                       </div>
                     ))}

@@ -74,6 +74,8 @@ export default function ThermalReceipt({
         <span className="thermal-receipt__name-value">{displayName}</span>
       </div>
 
+      <hr className="thermal-receipt__rule" />
+
       <div className="thermal-receipt__meta">
         <div className="thermal-receipt__meta-col">
           <p>
@@ -117,76 +119,75 @@ export default function ThermalReceipt({
         </tbody>
       </table>
 
-      <hr className="thermal-receipt__rule" />
+      <hr className="thermal-receipt__rule thermal-receipt__rule--thick" />
 
-      <div className="thermal-receipt__qty-line">
-        <span>Total Qty: {totalQty}</span>
+      <div className="thermal-receipt__totals-block">
+        <div className="thermal-receipt__qty-subtotal-row">
+          <span className="thermal-receipt__qty-line">Total Qty: {totalQty}</span>
+          <div className="thermal-receipt__subtotal">
+            <span>Sub Total</span>
+            <span>{formatReceiptAmount(bill.subTotal)}</span>
+          </div>
+        </div>
+
+        {bill.applyGst ? (
+          <div className="thermal-receipt__tax-lines">
+            {bill.cgstPercent > 0 ? (
+              <div className="thermal-receipt__gst-line">
+                <span>
+                  {formatTaxLineLabel("CGST", bill.cgstPercent, bill.subTotal)}
+                </span>
+                <span>{formatReceiptAmount(bill.cgstAmount)}</span>
+              </div>
+            ) : null}
+            {bill.sgstPercent > 0 ? (
+              <div className="thermal-receipt__gst-line">
+                <span>
+                  {formatTaxLineLabel("SGST", bill.sgstPercent, bill.subTotal)}
+                </span>
+                <span>{formatReceiptAmount(bill.sgstAmount)}</span>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
-      <div className="thermal-receipt__subtotal">
-        <span>Sub Total</span>
-        <span>{formatReceiptAmount(bill.subTotal)}</span>
-      </div>
-
-      {bill.applyGst ? (
-        <>
-          {bill.cgstPercent > 0 ? (
-            <div className="thermal-receipt__gst-line">
-              <span>
-                {formatTaxLineLabel("CGST", bill.cgstPercent, bill.subTotal)}
-              </span>
-              <span>{formatReceiptAmount(bill.cgstAmount)}</span>
-            </div>
-          ) : null}
-          {bill.sgstPercent > 0 ? (
-            <div className="thermal-receipt__gst-line">
-              <span>
-                {formatTaxLineLabel("SGST", bill.sgstPercent, bill.subTotal)}
-              </span>
-              <span>{formatReceiptAmount(bill.sgstAmount)}</span>
-            </div>
-          ) : null}
-        </>
-      ) : null}
+      <hr className="thermal-receipt__rule thermal-receipt__rule--thick" />
 
       <div className="thermal-receipt__grand-total">
-        <span>Bill Total</span>
+        <span>Grand Total</span>
         <span>{formatReceiptGrandTotal(bill.grandTotal)}</span>
       </div>
 
+      <hr className="thermal-receipt__rule thermal-receipt__rule--thick" />
+
       {paymentUpiId ? (
-        <>
-          <hr className="thermal-receipt__rule" />
-          <UpiPayPanel
-            upi={{
-              upiId: paymentUpiId,
-              payeeName: paymentPayeeName || receipt.cafeName,
-              amount: bill.grandTotal,
-              note: `Bill ${billNumber}`,
-            }}
-            fallbackQrUrl={paymentQrUrl}
-            fallbackQrLabel={paymentQrLabel}
-          />
-        </>
+        <UpiPayPanel
+          upi={{
+            upiId: paymentUpiId,
+            payeeName: paymentPayeeName || receipt.cafeName,
+            amount: bill.grandTotal,
+            note: `Bill ${billNumber}`,
+          }}
+          fallbackQrUrl={paymentQrUrl}
+          fallbackQrLabel={paymentQrLabel}
+        />
       ) : paymentQrUrl ? (
-        <>
-          <hr className="thermal-receipt__rule" />
-          <div className="thermal-receipt__pay">
-            <p className="thermal-receipt__pay-title">Scan to pay</p>
-            {paymentQrLabel ? (
-              <p className="thermal-receipt__pay-label">{paymentQrLabel}</p>
-            ) : null}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={paymentQrUrl}
-              alt="Payment QR code"
-              className="thermal-receipt__pay-qr"
-            />
-            <p className="thermal-receipt__pay-amount">
-              Pay {formatReceiptGrandTotal(bill.grandTotal)}
-            </p>
-          </div>
-        </>
+        <div className="thermal-receipt__pay">
+          <p className="thermal-receipt__pay-title">Scan to pay</p>
+          {paymentQrLabel ? (
+            <p className="thermal-receipt__pay-label">{paymentQrLabel}</p>
+          ) : null}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={paymentQrUrl}
+            alt="Payment QR code"
+            className="thermal-receipt__pay-qr"
+          />
+          <p className="thermal-receipt__pay-amount">
+            Pay {formatReceiptGrandTotal(bill.grandTotal)}
+          </p>
+        </div>
       ) : null}
 
       <hr className="thermal-receipt__rule" />
