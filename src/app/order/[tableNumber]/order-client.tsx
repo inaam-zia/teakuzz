@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatPrice } from "@/lib/format";
 import { fetchMyActiveOrders, ORDER_STATUS_POLL_MS } from "@/lib/order-poll";
@@ -41,6 +40,140 @@ function newCartLineId() {
 
 function cartStorageKey(tableNumber: number) {
   return `cafe-cart-table-${tableNumber}`;
+}
+
+const SLIDE_THUMB_SIZE = 48;
+const SLIDE_TRACK_PAD = 4;
+
+function SlideToPlaceOrder({
+  label,
+  disabled,
+  onConfirm,
+}: {
+  label: string;
+  disabled?: boolean;
+  onConfirm: () => void;
+}) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [offset, setOffset] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const dragStartX = useRef(0);
+  const dragStartOffset = useRef(0);
+  const maxOffsetRef = useRef(0);
+  const offsetRef = useRef(0);
+  const draggingRef = useRef(false);
+  const confirmedRef = useRef(false);
+
+  function measureMax() {
+    const track = trackRef.current;
+    if (!track) return 0;
+    return Math.max(0, track.clientWidth - SLIDE_THUMB_SIZE - SLIDE_TRACK_PAD * 2);
+  }
+
+  function reset() {
+    offsetRef.current = 0;
+    draggingRef.current = false;
+    setOffset(0);
+    setDragging(false);
+    confirmedRef.current = false;
+  }
+
+  useEffect(() => {
+    reset();
+  }, [label, disabled]);
+
+  useEffect(() => {
+    function onResize() {
+      maxOffsetRef.current = measureMax();
+      const next = Math.min(offsetRef.current, maxOffsetRef.current);
+      offsetRef.current = next;
+      setOffset(next);
+    }
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  function onPointerDown(e: React.PointerEvent<HTMLButtonElement>) {
+    if (disabled || confirmedRef.current) return;
+    maxOffsetRef.current = measureMax();
+    dragStartX.current = e.clientX;
+    dragStartOffset.current = offsetRef.current;
+    draggingRef.current = true;
+    setDragging(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function onPointerMove(e: React.PointerEvent<HTMLButtonElement>) {
+    if (!draggingRef.current || disabled || confirmedRef.current) return;
+    const delta = e.clientX - dragStartX.current;
+    const next = Math.min(
+      maxOffsetRef.current,
+      Math.max(0, dragStartOffset.current + delta)
+    );
+    offsetRef.current = next;
+    setOffset(next);
+  }
+
+  function finishDrag() {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    setDragging(false);
+    const max = maxOffsetRef.current || measureMax();
+    const current = offsetRef.current;
+    if (max > 0 && current >= max * 0.88) {
+      confirmedRef.current = true;
+      offsetRef.current = max;
+      setOffset(max);
+      onConfirm();
+      window.setTimeout(reset, 400);
+      return;
+    }
+    reset();
+  }
+
+  const progress = maxOffsetRef.current > 0 ? offset / maxOffsetRef.current : 0;
+
+  return (
+    <div
+      ref={trackRef}
+      className={`slide-to-order${disabled ? " slide-to-order--disabled" : ""}${
+        dragging ? " slide-to-order--dragging" : ""
+      }`}
+      role="slider"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(progress * 100)}
+      aria-label={label}
+      aria-disabled={disabled || undefined}
+    >
+      <div className="slide-to-order__fill" style={{ width: offset + SLIDE_THUMB_SIZE / 2 }} />
+      <span className="slide-to-order__label" style={{ opacity: Math.max(0.2, 1 - progress * 1.2) }}>
+        {disabled ? "Sending order…" : label}
+      </span>
+      <button
+        type="button"
+        className="slide-to-order__thumb"
+        style={{ transform: `translateX(${offset}px)` }}
+        disabled={disabled}
+        aria-label="Slide to place order"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={finishDrag}
+        onPointerCancel={finishDrag}
+      >
+        <svg
+          className="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2.5}
+          aria-hidden
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+    </div>
+  );
 }
 
 function AddQtyControl({
@@ -904,21 +1037,16 @@ export default function OrderClient({
   return (
     <main className={`order-bg mx-auto min-h-screen max-w-lg ${cartCount > 0 ? "pb-32" : "pb-16"}`}>
       <header className="order-header sticky top-0 z-10 px-5 pb-3 pt-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <CafeBrandingBlock branding={branding} logoSize="md" showTagline />
-            <div className="mt-2">
-              <TableHeading tableNumber={tableNumber} tableName={tableName} size="md" />
-            </div>
-            {hasSavedDetails ? (
-              <p className="mt-1 text-xs text-brand-subtle">
-                Ordering as <strong className="text-brand-muted">{customerName}</strong>
-              </p>
-            ) : null}
+        <div className="min-w-0">
+          <CafeBrandingBlock branding={branding} logoSize="md" showTagline />
+          <div className="mt-2">
+            <TableHeading tableNumber={tableNumber} tableName={tableName} size="md" />
           </div>
-          <Link href="/my-orders" className="order-nav-link shrink-0">
-            My orders
-          </Link>
+          {hasSavedDetails ? (
+            <p className="mt-1 text-xs text-brand-subtle">
+              Ordering as <strong className="text-brand-muted">{customerName}</strong>
+            </p>
+          ) : null}
         </div>
 
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -973,7 +1101,7 @@ export default function OrderClient({
         ) : null}
 
         {!loading && visibleSections.length > 1 ? (
-          <div className="category-chip-rail -mx-5 mt-3 border-t-0">
+          <div className="category-chip-rail mt-3">
             <div
               ref={chipRailRef}
               className="category-chip-rail__scroll"
@@ -1209,18 +1337,11 @@ export default function OrderClient({
                 </div>
 
                 {!showCheckout ? (
-                  <button
-                    type="button"
-                    onClick={openCheckout}
+                  <SlideToPlaceOrder
+                    label={`Place order · ${formatPrice(cartTotal)}`}
                     disabled={submitting}
-                    className="order-btn w-full"
-                  >
-                    {submitting
-                      ? "Sending order…"
-                      : hasSavedDetails
-                        ? `Place order · ${formatPrice(cartTotal)}`
-                        : `Continue · ${formatPrice(cartTotal)}`}
-                  </button>
+                    onConfirm={openCheckout}
+                  />
                 ) : (
                   <form
                     onSubmit={submitOrder}

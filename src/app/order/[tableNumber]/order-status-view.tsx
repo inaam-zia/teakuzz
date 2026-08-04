@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import CafeBrandingBlock from "@/components/cafe-branding-block";
 import DeveloperCredit from "@/components/developer-credit";
@@ -421,11 +420,8 @@ export default function OrderStatusView({
 
   return (
     <main className="order-bg mx-auto min-h-screen max-w-lg px-5 py-8">
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <CafeBrandingBlock branding={branding} logoSize="md" showTagline />
-        <Link href="/my-orders" className="order-nav-link shrink-0">
-          My orders
-        </Link>
+      <div className="mb-6">
+        <CafeBrandingBlock branding={branding} logoSize="md" showTagline align="center" />
       </div>
 
       <div className="order-hero-card space-y-6">
