@@ -571,6 +571,7 @@ export default function OrderClient({
   const [error, setError] = useState("");
   const [showCart, setShowCart] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showCheckoutItems, setShowCheckoutItems] = useState(false);
   const [hasActiveOrders, setHasActiveOrders] = useState(false);
   const [activeOrders, setActiveOrders] = useState<OrderWithItems[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -938,13 +939,14 @@ export default function OrderClient({
     );
   }
 
-  async function openCheckout(): Promise<boolean> {
+  function openCheckout(): Promise<boolean> {
     setCheckoutError("");
+    setShowCheckoutItems(false);
     if (hasSavedDetails) {
       return placeOrder();
     }
     setShowCheckout(true);
-    return false;
+    return Promise.resolve(false);
   }
 
   async function placeOrder(override?: { name: string; phone: string }): Promise<boolean> {
@@ -1005,6 +1007,7 @@ export default function OrderClient({
     setHasActiveOrders(true);
     setOrderPlacedSuccess(true);
     setShowCheckout(false);
+    setShowCheckoutItems(false);
     setDetailItem(null);
     setCart([]);
     try {
@@ -1040,6 +1043,7 @@ export default function OrderClient({
     setError("");
     setCheckoutError("");
     setShowCheckout(false);
+    setShowCheckoutItems(false);
     setShowCart(false);
     setDetailItem(null);
   }
@@ -1051,6 +1055,7 @@ export default function OrderClient({
   function openItemDetail(item: MenuItem) {
     setShowCart(false);
     setShowCheckout(false);
+    setShowCheckoutItems(false);
     setCheckoutError("");
     setDetailItem(item);
   }
@@ -1266,6 +1271,7 @@ export default function OrderClient({
           onClick={() => {
             setShowCart(false);
             setShowCheckout(false);
+            setShowCheckoutItems(false);
             setCheckoutError("");
           }}
         />
@@ -1306,92 +1312,65 @@ export default function OrderClient({
             </button>
           ) : (
             <div className="cart-sheet__panel mx-auto flex max-w-lg flex-col">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-lg font-bold text-cafe-900">Your cart</h3>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCart(false);
-                    setShowCheckout(false);
-                    setCheckoutError("");
-                  }}
-                  className="text-sm font-medium text-cafe-600"
-                >
-                  ← Menu
-                </button>
-              </div>
-
-              <div className="mt-4 flex-1 space-y-2 overflow-y-auto">
-                {cart.map((item) => (
-                  <div key={item.lineId} className="cart-line">
-                    <div className="cart-line__info">
-                      <p className="cart-line__name">{item.name}</p>
-                      {item.includes ? (
-                        <p className="mt-0.5 text-xs leading-snug text-cafe-500">{item.includes}</p>
-                      ) : null}
-                      <p className="mt-1 text-sm text-cafe-500">
-                        {formatPrice(item.price)}
-                        {item.quantity > 1
-                          ? ` · ${formatPrice(item.price * item.quantity)}`
-                          : ""}
+              {showCheckout ? (
+                <>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowCheckout(false);
+                          setShowCheckoutItems(false);
+                          setCheckoutError("");
+                        }}
+                        className="text-sm font-medium text-cafe-600"
+                      >
+                        ← Back to cart
+                      </button>
+                      <h3 className="mt-2 text-lg font-bold text-cafe-900">Your details</h3>
+                      <p className="mt-0.5 text-xs text-cafe-500">
+                        {cartCount} item{cartCount === 1 ? "" : "s"} · {formatPrice(cartTotal)}
                       </p>
                     </div>
-                    <div className="cart-line__qty qty-controls">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          item.kind === "offer" && item.offerId
-                            ? updateOfferQty(item.offerId, -1)
-                            : item.menuItemId
-                              ? updateQty(item.menuItemId, -1)
-                              : undefined
-                        }
-                        className="qty-btn"
-                        aria-label="Decrease quantity"
-                      >
-                        −
-                      </button>
-                      <span className="cart-line__qty-value">{item.quantity}</span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          item.kind === "offer" && item.offerId
-                            ? updateOfferQty(item.offerId, 1)
-                            : item.menuItemId
-                              ? updateQty(item.menuItemId, 1)
-                              : undefined
-                        }
-                        className="qty-btn qty-btn-plus"
-                        aria-label="Increase quantity"
-                      >
-                        +
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowCheckoutItems((v) => !v)}
+                      className="checkout-items-btn shrink-0"
+                      aria-expanded={showCheckoutItems}
+                    >
+                      {showCheckoutItems ? "Hide items" : "View items"}
+                      <span className="checkout-items-btn__badge">{cartCount}</span>
+                    </button>
                   </div>
-                ))}
-              </div>
 
-              <div className="mt-4 space-y-3 border-t border-cafe-200 pt-4">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-cafe-600">Items total</span>
-                  <span className="font-bold text-cafe-900">{formatPrice(cartTotal)}</span>
-                </div>
-                <div>
-                  <TableHeading tableNumber={tableNumber} tableName={tableName} size="sm" />
-                </div>
+                  {showCheckoutItems ? (
+                    <div className="checkout-items-panel mt-4 space-y-2">
+                      {cart.map((item) => (
+                        <div key={item.lineId} className="checkout-items-row">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-cafe-900">
+                              {item.quantity}× {item.name}
+                            </p>
+                            {item.includes ? (
+                              <p className="text-[11px] leading-snug text-cafe-500">{item.includes}</p>
+                            ) : null}
+                          </div>
+                          <p className="shrink-0 text-sm font-semibold text-cafe-800">
+                            {formatPrice(item.price * item.quantity)}
+                          </p>
+                        </div>
+                      ))}
+                      <div className="flex items-center justify-between border-t border-cafe-200 pt-2 text-sm">
+                        <span className="text-cafe-600">Total</span>
+                        <span className="font-bold text-cafe-900">{formatPrice(cartTotal)}</span>
+                      </div>
+                    </div>
+                  ) : null}
 
-                {!showCheckout ? (
-                  <SlideToPlaceOrder
-                    label={`Place order · ${formatPrice(cartTotal)}`}
-                    disabled={submitting}
-                    onConfirm={openCheckout}
-                  />
-                ) : (
-                  <form
-                    onSubmit={submitOrder}
-                    className="space-y-4 rounded-2xl border border-cafe-200 bg-cafe-50/80 p-4"
-                  >
-                    <p className="text-sm font-semibold text-cafe-800">Almost done — your details</p>
+                  <form onSubmit={submitOrder} className="mt-5 space-y-4">
+                    <div>
+                      <TableHeading tableNumber={tableNumber} tableName={tableName} size="sm" />
+                    </div>
 
                     <div>
                       <label htmlFor="checkout-name" className="order-label">
@@ -1435,11 +1414,95 @@ export default function OrderClient({
                     {checkoutError ? <p className="text-sm text-red-600">{checkoutError}</p> : null}
 
                     <button type="submit" disabled={submitting} className="order-btn w-full">
-                      {submitting ? "Sending order…" : `Confirm · ${formatPrice(cartTotal)}`}
+                      {submitting ? "Sending order…" : `Confirm order · ${formatPrice(cartTotal)}`}
                     </button>
                   </form>
-                )}
-              </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-lg font-bold text-cafe-900">Your cart</h3>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCart(false);
+                        setShowCheckout(false);
+                        setShowCheckoutItems(false);
+                        setCheckoutError("");
+                      }}
+                      className="text-sm font-medium text-cafe-600"
+                    >
+                      ← Menu
+                    </button>
+                  </div>
+
+                  <div className="mt-4 flex-1 space-y-2 overflow-y-auto">
+                    {cart.map((item) => (
+                      <div key={item.lineId} className="cart-line">
+                        <div className="cart-line__info">
+                          <p className="cart-line__name">{item.name}</p>
+                          {item.includes ? (
+                            <p className="mt-0.5 text-xs leading-snug text-cafe-500">{item.includes}</p>
+                          ) : null}
+                          <p className="mt-1 text-sm text-cafe-500">
+                            {formatPrice(item.price)}
+                            {item.quantity > 1
+                              ? ` · ${formatPrice(item.price * item.quantity)}`
+                              : ""}
+                          </p>
+                        </div>
+                        <div className="cart-line__qty qty-controls">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              item.kind === "offer" && item.offerId
+                                ? updateOfferQty(item.offerId, -1)
+                                : item.menuItemId
+                                  ? updateQty(item.menuItemId, -1)
+                                  : undefined
+                            }
+                            className="qty-btn"
+                            aria-label="Decrease quantity"
+                          >
+                            −
+                          </button>
+                          <span className="cart-line__qty-value">{item.quantity}</span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              item.kind === "offer" && item.offerId
+                                ? updateOfferQty(item.offerId, 1)
+                                : item.menuItemId
+                                  ? updateQty(item.menuItemId, 1)
+                                  : undefined
+                            }
+                            className="qty-btn qty-btn-plus"
+                            aria-label="Increase quantity"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 space-y-3 border-t border-cafe-200 pt-4">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-cafe-600">Items total</span>
+                      <span className="font-bold text-cafe-900">{formatPrice(cartTotal)}</span>
+                    </div>
+                    <div>
+                      <TableHeading tableNumber={tableNumber} tableName={tableName} size="sm" />
+                    </div>
+
+                    <SlideToPlaceOrder
+                      label={`Place order · ${formatPrice(cartTotal)}`}
+                      disabled={submitting}
+                      onConfirm={openCheckout}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
