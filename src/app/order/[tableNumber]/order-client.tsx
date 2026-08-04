@@ -1313,7 +1313,11 @@ export default function OrderClient({
               <span className="shrink-0 text-sm font-bold tracking-wide">VIEW →</span>
             </button>
           ) : (
-            <div className="cart-sheet__panel mx-auto flex max-w-lg flex-col">
+            <div
+              className={`cart-sheet__panel mx-auto flex w-full flex-col${
+                showCheckout ? " cart-sheet__panel--checkout" : " max-w-lg"
+              }`}
+            >
               {showCheckout ? (
                 <>
                   <div className="flex items-start justify-between gap-3">
