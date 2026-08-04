@@ -140,18 +140,20 @@
   }
 
   .order-input {
-    @apply w-full rounded-2xl border px-4 py-3.5 outline-none transition focus:ring-4;
+    @apply w-full rounded-2xl border px-4 py-3.5 outline-none transition focus:ring-0;
     border-color: var(--brand-border);
     background-color: color-mix(in srgb, var(--brand-bg) 50%, transparent);
     /* 16px minimum — prevents iOS Safari zoom on focus */
     font-size: max(16px, var(--brand-font-size-base));
     color: var(--brand-text);
+    box-shadow: none;
   }
 
   .order-input:focus {
     border-color: var(--brand-primary);
     background-color: var(--brand-surface);
-    --tw-ring-color: color-mix(in srgb, var(--brand-primary) 20%, transparent);
+    box-shadow: none;
+    --tw-ring-shadow: 0 0 #0000;
   }
 
   .order-btn {

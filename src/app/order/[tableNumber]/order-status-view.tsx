@@ -401,15 +401,6 @@ export default function OrderStatusView({
   const allCancelled =
     orders.length > 0 && orders.every((o) => o.status === "cancelled");
 
-  const headlineStatus = useMemo((): OrderStatus | null => {
-    if (!orders.length) return null;
-    if (allCancelled) return "cancelled";
-    if (allServed) return "served";
-    if (orders.some((o) => o.status === "preparing")) return "preparing";
-    if (orders.some((o) => o.status === "new")) return "new";
-    return orders[0]?.status ?? null;
-  }, [orders, allCancelled, allServed]);
-
   const firstName = customerName.trim().split(/\s+/)[0] || "there";
 
   // When the bill is generated (all served), reload GST/CGST/SGST from admin settings
@@ -442,25 +433,11 @@ export default function OrderStatusView({
                 Please contact staff if you need help, {firstName}.
               </p>
             </>
-          ) : headlineStatus === "preparing" ? (
-            <>
-              <div className="status-hero status-hero--preparing" aria-hidden>
-                <span className="status-hero__pulse" />
-              </div>
-              <h1 className="text-2xl font-bold text-brand-heading">Kitchen is on it</h1>
-              <p className="mt-2 text-sm text-brand-muted">
-                Hang tight {firstName} — we&apos;ll bring it to{" "}
-                <TableHeading tableNumber={tableNumber} tableName={tableName} size="sm" />
-              </p>
-            </>
           ) : (
             <>
-              <div className="status-hero status-hero--received" aria-hidden>
-                ✓
-              </div>
-              <h1 className="text-2xl font-bold text-brand-heading">Order received</h1>
+              <h1 className="text-2xl font-bold text-brand-heading">Thanks {firstName}!</h1>
               <p className="mt-2 text-sm text-brand-muted">
-                Thanks {firstName} — tracking your order for{" "}
+                We&apos;ll bring your order to{" "}
                 <TableHeading tableNumber={tableNumber} tableName={tableName} size="sm" />
               </p>
             </>

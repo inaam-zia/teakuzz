@@ -1386,7 +1386,6 @@ export default function OrderClient({
                           onChange={(e) => setCustomerName(e.target.value)}
                           className="order-input"
                           autoComplete="name"
-                          autoFocus
                           required
                         />
                       </div>
