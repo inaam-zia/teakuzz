@@ -1279,9 +1279,7 @@ export default function OrderClient({
 
       {(cartCount > 0 || orderPlacedSuccess) && !detailItem ? (
         <div
-          className={`cart-sheet${showCart || orderPlacedSuccess ? " cart-sheet--open" : ""}${
-            showCheckout && !orderPlacedSuccess ? " cart-sheet--checkout" : ""
-          }`}
+          className={`cart-sheet${showCart || orderPlacedSuccess ? " cart-sheet--open" : ""}`}
         >
           {orderPlacedSuccess ? (
             <div className="mx-auto w-full max-w-lg py-2">
@@ -1313,11 +1311,7 @@ export default function OrderClient({
               <span className="shrink-0 text-sm font-bold tracking-wide">VIEW →</span>
             </button>
           ) : (
-            <div
-              className={`cart-sheet__panel mx-auto flex w-full flex-col${
-                showCheckout ? " cart-sheet__panel--checkout" : " max-w-lg"
-              }`}
-            >
+            <div className="cart-sheet__panel mx-auto flex max-w-lg flex-col">
               {showCheckout ? (
                 <>
                   <div className="flex items-start justify-between gap-3">

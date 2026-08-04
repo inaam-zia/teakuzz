@@ -336,12 +336,6 @@
     padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
   }
 
-  .cart-sheet.cart-sheet--checkout {
-    padding-left: 0;
-    padding-right: 0;
-    padding-top: 0.75rem;
-  }
-
   .cart-sheet--open {
     max-height: min(85dvh, 100%);
     overflow: hidden;
@@ -355,13 +349,6 @@
     -webkit-overflow-scrolling: touch;
     max-height: calc(85dvh - 2.5rem);
     padding-bottom: env(safe-area-inset-bottom, 0);
-  }
-
-  .cart-sheet__panel--checkout {
-    width: 100%;
-    max-width: none;
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
   }
 
   .cart-bar {
