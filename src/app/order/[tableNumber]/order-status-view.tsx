@@ -467,15 +467,6 @@ export default function OrderStatusView({
           )}
         </div>
 
-        {!allServed && !allCancelled && headlineStatus && headlineStatus !== "cancelled" ? (
-          <div className="rounded-2xl border border-brand bg-brand-surface/80 px-4 py-4">
-            <p className="mb-3 text-center text-xs font-bold uppercase tracking-wider text-brand-subtle">
-              Live status
-            </p>
-            <StatusTimeline status={headlineStatus} />
-          </div>
-        ) : null}
-
         <div className="space-y-3">
           <h2 className="text-sm font-bold uppercase tracking-wider text-brand-subtle">
             {allServed && !allCancelled ? "Your bill" : "Order details"}
