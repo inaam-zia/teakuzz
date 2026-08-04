@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import CafeBrandingBlock from "@/components/cafe-branding-block";
 import DeveloperCredit from "@/components/developer-credit";
@@ -401,6 +402,17 @@ export default function OrderStatusView({
   const allCancelled =
     orders.length > 0 && orders.every((o) => o.status === "cancelled");
 
+  const headlineStatus = useMemo((): OrderStatus | null => {
+    if (!orders.length) return null;
+    if (allCancelled) return "cancelled";
+    if (allServed) return "served";
+    if (orders.some((o) => o.status === "preparing")) return "preparing";
+    if (orders.some((o) => o.status === "new")) return "new";
+    return orders[0]?.status ?? null;
+  }, [orders, allCancelled, allServed]);
+
+  const firstName = customerName.trim().split(/\s+/)[0] || "there";
+
   // When the bill is generated (all served), reload GST/CGST/SGST from admin settings
   useEffect(() => {
     if (!allServed || allCancelled) return;
@@ -409,34 +421,68 @@ export default function OrderStatusView({
 
   return (
     <main className="order-bg mx-auto min-h-screen max-w-lg px-5 py-8">
-      <div className="mb-6">
-        <CafeBrandingBlock branding={branding} logoSize="md" showTagline align="center" />
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <CafeBrandingBlock branding={branding} logoSize="md" showTagline />
+        <Link href="/my-orders" className="order-nav-link shrink-0">
+          My orders
+        </Link>
       </div>
+
       <div className="order-hero-card space-y-6">
         <div className="text-center">
           {allServed && orders.length > 0 && !allCancelled ? (
             <>
               <div className="success-check">✓</div>
-              <h1 className="text-2xl font-bold text-brand-heading">Order served!</h1>
+              <h1 className="text-2xl font-bold text-brand-heading">Enjoy your meal!</h1>
               <p className="mt-2 text-sm text-brand-muted">
-                Your bill is below. Thanks {customerName.split(" ")[0]}!
+                Your bill is ready below. Thanks {firstName}!
+              </p>
+            </>
+          ) : allCancelled ? (
+            <>
+              <div className="status-hero status-hero--cancelled">!</div>
+              <h1 className="text-2xl font-bold text-brand-heading">Order cancelled</h1>
+              <p className="mt-2 text-sm text-brand-muted">
+                Please contact staff if you need help, {firstName}.
+              </p>
+            </>
+          ) : headlineStatus === "preparing" ? (
+            <>
+              <div className="status-hero status-hero--preparing" aria-hidden>
+                <span className="status-hero__pulse" />
+              </div>
+              <h1 className="text-2xl font-bold text-brand-heading">Kitchen is on it</h1>
+              <p className="mt-2 text-sm text-brand-muted">
+                Hang tight {firstName} — we&apos;ll bring it to{" "}
+                <TableHeading tableNumber={tableNumber} tableName={tableName} size="sm" />
               </p>
             </>
           ) : (
             <>
-              <div className="success-check">✓</div>
-              <h1 className="text-2xl font-bold text-brand-heading">Order placed!</h1>
+              <div className="status-hero status-hero--received" aria-hidden>
+                ✓
+              </div>
+              <h1 className="text-2xl font-bold text-brand-heading">Order received</h1>
               <p className="mt-2 text-sm text-brand-muted">
-                Thanks {customerName.split(" ")[0]} — we&apos;ll bring it to{" "}
+                Thanks {firstName} — tracking your order for{" "}
                 <TableHeading tableNumber={tableNumber} tableName={tableName} size="sm" />
               </p>
             </>
           )}
         </div>
 
+        {!allServed && !allCancelled && headlineStatus && headlineStatus !== "cancelled" ? (
+          <div className="rounded-2xl border border-brand bg-brand-surface/80 px-4 py-4">
+            <p className="mb-3 text-center text-xs font-bold uppercase tracking-wider text-brand-subtle">
+              Live status
+            </p>
+            <StatusTimeline status={headlineStatus} />
+          </div>
+        ) : null}
+
         <div className="space-y-3">
           <h2 className="text-sm font-bold uppercase tracking-wider text-brand-subtle">
-            {allServed && !allCancelled ? "Your bill" : "Your order status"}
+            {allServed && !allCancelled ? "Your bill" : "Order details"}
           </h2>
           {loading ? (
             <p className="text-center text-sm text-brand-muted">Loading status…</p>
@@ -472,34 +518,32 @@ export default function OrderStatusView({
             </div>
           ) : (
             orders.map((order) => (
-              <OrderStatusCard
-                key={order.id}
-                order={order}
-                branding={billBranding}
-              />
+              <OrderStatusCard key={order.id} order={order} branding={billBranding} />
             ))
           )}
         </div>
 
-        {allCancelled && (
+        {allCancelled ? (
           <p className="rounded-xl bg-red-50 px-4 py-3 text-center text-sm text-red-800">
             Your order was cancelled. Please contact staff if you need help.
           </p>
-        )}
+        ) : null}
 
-        {allServed && orders.length > 0 && !allCancelled && (
+        {allServed && orders.length > 0 && !allCancelled ? (
           <p className="rounded-xl bg-green-50 px-4 py-3 text-center text-sm text-green-800">
-            Enjoy your meal! Rate your dishes below to help us improve.
+            Enjoy your meal! Rate your dishes above to help us improve.
           </p>
-        )}
+        ) : null}
 
         <button type="button" onClick={onAddMore} className="order-btn w-full">
-          Add more items
+          {allServed || allCancelled ? "Order more items" : "Add more items"}
         </button>
 
-        <p className="text-center text-xs text-brand-subtle">
-          Status updates every few seconds
-        </p>
+        {!allServed && !allCancelled ? (
+          <p className="text-center text-xs text-brand-subtle">
+            Status updates automatically
+          </p>
+        ) : null}
       </div>
       <DeveloperCredit className="mt-8" />
     </main>

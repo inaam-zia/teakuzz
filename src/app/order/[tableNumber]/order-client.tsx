@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatPrice } from "@/lib/format";
 import { fetchMyActiveOrders, ORDER_STATUS_POLL_MS } from "@/lib/order-poll";
@@ -28,8 +29,82 @@ type Props = {
 
 type Step = "menu" | "done";
 
+type CategorySection = {
+  key: string;
+  title: string;
+  items: MenuItem[];
+};
+
 function newCartLineId() {
   return `line-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function cartStorageKey(tableNumber: number) {
+  return `cafe-cart-table-${tableNumber}`;
+}
+
+function AddQtyControl({
+  name,
+  quantity,
+  onAdd,
+  onUpdateQty,
+  size = "md",
+}: {
+  name: string;
+  quantity: number;
+  onAdd: () => void;
+  onUpdateQty: (delta: number) => void;
+  size?: "sm" | "md";
+}) {
+  if (quantity > 0) {
+    return (
+      <div className={`qty-controls ${size === "sm" ? "gap-1.5" : ""}`}>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onUpdateQty(-1);
+          }}
+          className={`qty-btn ${size === "sm" ? "h-7 w-7 text-base" : ""}`}
+          aria-label={`Decrease ${name} quantity`}
+        >
+          −
+        </button>
+        <span
+          className={`text-center font-semibold text-cafe-900 ${
+            size === "sm" ? "w-4 text-xs" : "w-5 text-sm"
+          }`}
+        >
+          {quantity}
+        </span>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onUpdateQty(1);
+          }}
+          className={`qty-btn qty-btn-plus ${size === "sm" ? "h-7 w-7 text-base" : ""}`}
+          aria-label={`Increase ${name} quantity`}
+        >
+          +
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onAdd();
+      }}
+      className={size === "sm" ? "menu-add-btn menu-add-btn--sm" : "menu-add-btn"}
+      aria-label={`Add ${name}`}
+    >
+      ADD
+    </button>
+  );
 }
 
 function OfferCard({
@@ -67,36 +142,13 @@ function OfferCard({
       )}
       <div className="mt-2 flex items-center justify-between gap-1">
         <span className="text-xs font-bold text-cafe-700">{formatPrice(offer.price)}</span>
-        {quantity > 0 ? (
-          <div className="qty-controls gap-1.5">
-            <button
-              type="button"
-              onClick={() => onUpdateQty(-1)}
-              className="qty-btn h-7 w-7 text-base"
-              aria-label={`Decrease ${offer.name} quantity`}
-            >
-              −
-            </button>
-            <span className="w-4 text-center text-xs font-semibold">{quantity}</span>
-            <button
-              type="button"
-              onClick={() => onUpdateQty(1)}
-              className="qty-btn qty-btn-plus h-7 w-7 text-base"
-              aria-label={`Increase ${offer.name} quantity`}
-            >
-              +
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={onAdd}
-            className="qty-btn qty-btn-plus h-7 w-7 text-base"
-            aria-label={`Add ${offer.name}`}
-          >
-            +
-          </button>
-        )}
+        <AddQtyControl
+          name={offer.name}
+          quantity={quantity}
+          onAdd={onAdd}
+          onUpdateQty={onUpdateQty}
+          size="sm"
+        />
       </div>
     </div>
   );
@@ -108,63 +160,50 @@ function MenuItemRow({
   isPreparing,
   onAdd,
   onUpdateQty,
+  onOpenDetail,
 }: {
   item: MenuItem;
   quantity: number;
   isPreparing: boolean;
   onAdd: () => void;
   onUpdateQty: (delta: number) => void;
+  onOpenDetail: () => void;
 }) {
   return (
     <div
-      className={`menu-item-card ${quantity > 0 ? "menu-item-card--in-cart" : ""}`}
+      role="button"
+      tabIndex={0}
+      onClick={onOpenDetail}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpenDetail();
+        }
+      }}
+      className={`menu-item-card cursor-pointer ${quantity > 0 ? "menu-item-card--in-cart" : ""}`}
     >
       <LazyMenuImage src={item.image_url} alt={item.name} className="menu-item-image" />
       <div className="min-w-0 flex-1">
-        <p className="font-semibold text-cafe-900">{item.name}</p>
-        {item.description && (
-          <p className="mt-1 text-sm leading-relaxed text-cafe-500">{item.description}</p>
-        )}
-        {isPreparing && (
-          <p className="mt-1 text-xs font-semibold text-amber-700">
-            Preparing your order — tap + to add more
+        <p className="font-semibold leading-snug text-cafe-900">{item.name}</p>
+        {item.description ? (
+          <p className="mt-0.5 line-clamp-2 text-sm leading-snug text-cafe-500">
+            {item.description}
           </p>
-        )}
+        ) : null}
+        {isPreparing ? (
+          <p className="mt-1 text-xs font-semibold text-amber-700">
+            Preparing — tap ADD to get more
+          </p>
+        ) : null}
+        <p className="mt-2 text-sm font-bold text-cafe-800">{formatPrice(item.price)}</p>
       </div>
-      <div className="flex shrink-0 flex-col items-end justify-between gap-2 self-stretch">
-        <span className="menu-price">{formatPrice(item.price)}</span>
-        {quantity > 0 ? (
-          <div className="qty-controls">
-            <button
-              type="button"
-              onClick={() => onUpdateQty(-1)}
-              className="qty-btn"
-              aria-label={`Decrease ${item.name} quantity`}
-            >
-              −
-            </button>
-            <span className="w-5 text-center text-sm font-semibold text-cafe-900">
-              {quantity}
-            </span>
-            <button
-              type="button"
-              onClick={() => onUpdateQty(1)}
-              className="qty-btn qty-btn-plus"
-              aria-label={`Increase ${item.name} quantity`}
-            >
-              +
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={onAdd}
-            className="qty-btn qty-btn-plus"
-            aria-label={`Add ${item.name}`}
-          >
-            +
-          </button>
-        )}
+      <div className="flex shrink-0 flex-col items-end justify-end self-stretch">
+        <AddQtyControl
+          name={item.name}
+          quantity={quantity}
+          onAdd={onAdd}
+          onUpdateQty={onUpdateQty}
+        />
       </div>
     </div>
   );
@@ -176,16 +215,27 @@ function MenuSuggestionCard({
   isPreparing,
   onAdd,
   onUpdateQty,
+  onOpenDetail,
 }: {
   item: MenuItem;
   quantity: number;
   isPreparing: boolean;
   onAdd: () => void;
   onUpdateQty: (delta: number) => void;
+  onOpenDetail: () => void;
 }) {
   return (
     <div
-      className={`menu-suggestion-card ${quantity > 0 ? "menu-suggestion-card--in-cart" : ""}`}
+      role="button"
+      tabIndex={0}
+      onClick={onOpenDetail}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpenDetail();
+        }
+      }}
+      className={`menu-suggestion-card cursor-pointer ${quantity > 0 ? "menu-suggestion-card--in-cart" : ""}`}
     >
       {item.image_url ? (
         <LazyMenuImage src={item.image_url} alt="" className="menu-suggestion-image" />
@@ -197,66 +247,41 @@ function MenuSuggestionCard({
       <p className="line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-tight text-cafe-900">
         {item.name}
       </p>
-      {isPreparing && (
-        <p className="mt-0.5 text-[10px] font-semibold text-amber-700">
-          Preparing — add more?
-        </p>
-      )}
+      {isPreparing ? (
+        <p className="mt-0.5 text-[10px] font-semibold text-amber-700">Preparing — add more?</p>
+      ) : null}
       <div className="mt-2 flex items-center justify-between gap-1">
         <span className="text-xs font-bold text-cafe-700">{formatPrice(item.price)}</span>
-        {quantity > 0 ? (
-          <div className="qty-controls gap-1.5">
-            <button
-              type="button"
-              onClick={() => onUpdateQty(-1)}
-              className="qty-btn h-7 w-7 text-base"
-              aria-label={`Decrease ${item.name} quantity`}
-            >
-              −
-            </button>
-            <span className="w-4 text-center text-xs font-semibold">{quantity}</span>
-            <button
-              type="button"
-              onClick={() => onUpdateQty(1)}
-              className="qty-btn qty-btn-plus h-7 w-7 text-base"
-              aria-label={`Increase ${item.name} quantity`}
-            >
-              +
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={onAdd}
-            className="qty-btn qty-btn-plus h-7 w-7 text-base"
-            aria-label={`Add ${item.name}`}
-          >
-            +
-          </button>
-        )}
+        <AddQtyControl
+          name={item.name}
+          quantity={quantity}
+          onAdd={onAdd}
+          onUpdateQty={onUpdateQty}
+          size="sm"
+        />
       </div>
     </div>
   );
 }
 
 function MenuCategorySection({
+  sectionKey,
   title,
   items,
-  expanded,
-  onToggle,
   cartQtyById,
   preparingItemIds,
   onAdd,
   onUpdateQty,
+  onOpenDetail,
 }: {
+  sectionKey: string;
   title: string;
   items: MenuItem[];
-  expanded: boolean;
-  onToggle: () => void;
   cartQtyById: Map<string, number>;
   preparingItemIds: Set<string>;
   onAdd: (item: MenuItem) => void;
   onUpdateQty: (menuItemId: string, delta: number) => void;
+  onOpenDetail: (item: MenuItem) => void;
 }) {
   const sectionCartCount = items.reduce(
     (sum, item) => sum + (cartQtyById.get(item.id) ?? 0),
@@ -264,50 +289,107 @@ function MenuCategorySection({
   );
 
   return (
-    <section>
+    <section id={`menu-cat-${sectionKey}`} data-category-key={sectionKey} className="scroll-mt-48">
+      <div className="mb-3 flex items-center gap-2">
+        <h2 className="order-category">{title}</h2>
+        <span className="text-[10px] font-semibold text-cafe-500">
+          {items.length} item{items.length === 1 ? "" : "s"}
+        </span>
+        {sectionCartCount > 0 ? (
+          <span className="rounded-full bg-[var(--brand-primary)] px-2 py-0.5 text-[10px] font-bold text-[var(--brand-button-text)]">
+            {sectionCartCount}
+          </span>
+        ) : null}
+      </div>
+      <div className="space-y-3">
+        {items.map((item) => (
+          <MenuItemRow
+            key={item.id}
+            item={item}
+            quantity={cartQtyById.get(item.id) ?? 0}
+            isPreparing={preparingItemIds.has(item.id)}
+            onAdd={() => onAdd(item)}
+            onUpdateQty={(delta) => onUpdateQty(item.id, delta)}
+            onOpenDetail={() => onOpenDetail(item)}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ItemDetailSheet({
+  item,
+  quantity,
+  isPreparing,
+  onClose,
+  onAdd,
+  onUpdateQty,
+}: {
+  item: MenuItem;
+  quantity: number;
+  isPreparing: boolean;
+  onClose: () => void;
+  onAdd: () => void;
+  onUpdateQty: (delta: number) => void;
+}) {
+  return (
+    <>
       <button
         type="button"
-        onClick={onToggle}
-        className="order-category-toggle"
-        aria-expanded={expanded}
-      >
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="order-category">{title}</span>
-          <span className="text-[10px] font-semibold normal-case tracking-normal text-cafe-500">
-            {items.length} item{items.length === 1 ? "" : "s"}
-          </span>
-          {sectionCartCount > 0 ? (
-            <span className="rounded-full bg-[var(--brand-primary)] px-2 py-0.5 text-[10px] font-bold text-[var(--brand-button-text)]">
-              {sectionCartCount}
-            </span>
+        className="cart-sheet-backdrop"
+        aria-label="Close item details"
+        onClick={onClose}
+      />
+      <div className="item-detail-sheet" role="dialog" aria-modal="true" aria-label={item.name}>
+        <div className="item-detail-sheet__panel mx-auto max-w-lg">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-lg font-bold text-cafe-900">{item.name}</p>
+              <p className="mt-1 text-base font-bold text-cafe-800">{formatPrice(item.price)}</p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="shrink-0 rounded-full px-2 py-1 text-sm font-medium text-cafe-500 hover:text-cafe-700"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
+
+          {item.image_url ? (
+            <LazyMenuImage src={item.image_url} alt={item.name} className="item-detail-image" />
+          ) : (
+            <div className="item-detail-image item-detail-image--placeholder">
+              {item.name.charAt(0)}
+            </div>
+          )}
+
+          {item.description ? (
+            <p className="mt-4 text-sm leading-relaxed text-cafe-600">{item.description}</p>
           ) : null}
-        </div>
-        <svg
-          className={`order-category-chevron h-4 w-4 ${expanded ? "" : "order-category-chevron--collapsed"}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2.5}
-          aria-hidden
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-      {expanded ? (
-        <div className="space-y-3">
-          {items.map((item) => (
-            <MenuItemRow
-              key={item.id}
-              item={item}
-              quantity={cartQtyById.get(item.id) ?? 0}
-              isPreparing={preparingItemIds.has(item.id)}
-              onAdd={() => onAdd(item)}
-              onUpdateQty={(delta) => onUpdateQty(item.id, delta)}
+
+          {isPreparing ? (
+            <p className="mt-3 text-xs font-semibold text-amber-700">
+              Kitchen is preparing this — you can still add more
+            </p>
+          ) : null}
+
+          <div className="mt-5 flex items-center justify-between gap-3">
+            <span className="text-sm font-semibold text-cafe-700">
+              {quantity > 0 ? `${quantity} in cart` : "Add to order"}
+            </span>
+            <AddQtyControl
+              name={item.name}
+              quantity={quantity}
+              onAdd={onAdd}
+              onUpdateQty={onUpdateQty}
             />
-          ))}
+          </div>
         </div>
-      ) : null}
-    </section>
+      </div>
+    </>
   );
 }
 
@@ -322,6 +404,7 @@ export default function OrderClient({
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartHydrated, setCartHydrated] = useState(false);
   const [customerName, setCustomerName] = useState(savedCustomer?.name ?? "");
   const [customerPhone, setCustomerPhone] = useState(savedCustomer?.phone ?? "");
   const [checkoutError, setCheckoutError] = useState("");
@@ -333,13 +416,38 @@ export default function OrderClient({
   const [hasActiveOrders, setHasActiveOrders] = useState(false);
   const [activeOrders, setActiveOrders] = useState<OrderWithItems[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [suggestions, setSuggestions] = useState<MenuItem[]>([]);
   const [offers, setOffers] = useState<Offer[]>(initialOffers);
   const [suggestionsSource, setSuggestionsSource] = useState<"feedback" | "sales" | "menu">("menu");
+  const [detailItem, setDetailItem] = useState<MenuItem | null>(null);
+  const [activeCategoryKey, setActiveCategoryKey] = useState<string | null>(null);
   const scrollMenuToTopRef = useRef(false);
+  const chipRailRef = useRef<HTMLDivElement>(null);
+  const skipObserverRef = useRef(false);
 
   const hasSavedDetails = Boolean(customerName.trim() && normalizePhone(customerPhone));
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(cartStorageKey(tableNumber));
+      if (raw) {
+        const parsed = JSON.parse(raw) as CartItem[];
+        if (Array.isArray(parsed)) setCart(parsed);
+      }
+    } catch {
+      /* ignore corrupt cart */
+    }
+    setCartHydrated(true);
+  }, [tableNumber]);
+
+  useEffect(() => {
+    if (!cartHydrated) return;
+    try {
+      sessionStorage.setItem(cartStorageKey(tableNumber), JSON.stringify(cart));
+    } catch {
+      /* quota / private mode */
+    }
+  }, [cart, tableNumber, cartHydrated]);
 
   useEffect(() => {
     fetch("/api/menu")
@@ -409,9 +517,11 @@ export default function OrderClient({
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
 
-  // Lock menu scroll while cart / name-phone checkout is open
+  const sheetOpen = showCart || Boolean(detailItem);
+
+  // Lock menu scroll while cart / checkout / item detail is open
   useEffect(() => {
-    if (!showCart) return;
+    if (!sheetOpen) return;
     const scrollY = window.scrollY;
     const { body } = document;
     const prev = {
@@ -437,7 +547,7 @@ export default function OrderClient({
       body.style.overflow = prev.overflow;
       window.scrollTo(0, scrollY);
     };
-  }, [showCart]);
+  }, [sheetOpen]);
 
   const itemsByCategory = useMemo(() => {
     const grouped = new Map<string, MenuItem[]>();
@@ -475,9 +585,31 @@ export default function OrderClient({
     return filtered;
   }, [items, itemsByCategory, categoryNameById, normalizedSearch]);
 
-  const hasVisibleMenuItems = useMemo(() => {
-    return Array.from(visibleItemsByCategory.values()).some((catItems) => catItems.length > 0);
-  }, [visibleItemsByCategory]);
+  const visibleSections = useMemo((): CategorySection[] => {
+    const sections: CategorySection[] = [];
+    for (const cat of categories) {
+      const catItems = visibleItemsByCategory.get(cat.id);
+      if (!catItems?.length) continue;
+      sections.push({ key: cat.id, title: cat.name, items: catItems });
+    }
+    const other = visibleItemsByCategory.get("other");
+    if (other?.length) {
+      sections.push({ key: "other", title: "Other", items: other });
+    }
+    return sections;
+  }, [categories, visibleItemsByCategory]);
+
+  const visibleOffers = useMemo(() => {
+    if (!normalizedSearch) return offers;
+    return offers.filter((offer) => {
+      const includes = formatOfferIncludes(offer);
+      const haystack = `${offer.name} ${includes}`.toLowerCase();
+      return haystack.includes(normalizedSearch);
+    });
+  }, [offers, normalizedSearch]);
+
+  const hasVisibleMenuItems = visibleSections.length > 0;
+  const hasVisibleOffers = visibleOffers.length > 0;
 
   const cartQtyById = useMemo(() => {
     const map = new Map<string, number>();
@@ -519,21 +651,55 @@ export default function OrderClient({
   const cartTotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
 
-  function isCategoryExpanded(categoryKey: string): boolean {
-    if (normalizedSearch) return true;
-    return expandedCategories.has(categoryKey);
-  }
+  useEffect(() => {
+    if (!visibleSections.length) {
+      setActiveCategoryKey(null);
+      return;
+    }
 
-  function toggleCategory(categoryKey: string) {
-    setExpandedCategories((prev) => {
-      const next = new Set(prev);
-      if (next.has(categoryKey)) {
-        next.delete(categoryKey);
-      } else {
-        next.add(categoryKey);
-      }
-      return next;
+    setActiveCategoryKey((prev) => {
+      if (prev && visibleSections.some((s) => s.key === prev)) return prev;
+      return visibleSections[0].key;
     });
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (skipObserverRef.current) return;
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        const top = visible[0];
+        if (!top) return;
+        const key = (top.target as HTMLElement).dataset.categoryKey;
+        if (key) setActiveCategoryKey(key);
+      },
+      { rootMargin: "-30% 0px -55% 0px", threshold: [0, 0.25, 0.5, 1] }
+    );
+
+    for (const section of visibleSections) {
+      const el = document.getElementById(`menu-cat-${section.key}`);
+      if (el) observer.observe(el);
+    }
+
+    return () => observer.disconnect();
+  }, [visibleSections, loading, normalizedSearch]);
+
+  useEffect(() => {
+    if (!activeCategoryKey || !chipRailRef.current) return;
+    const chip = chipRailRef.current.querySelector<HTMLElement>(
+      `[data-chip-key="${activeCategoryKey}"]`
+    );
+    chip?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  }, [activeCategoryKey]);
+
+  function scrollToCategory(categoryKey: string) {
+    skipObserverRef.current = true;
+    setActiveCategoryKey(categoryKey);
+    const el = document.getElementById(`menu-cat-${categoryKey}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.setTimeout(() => {
+      skipObserverRef.current = false;
+    }, 600);
   }
 
   function addToCart(item: MenuItem) {
@@ -680,8 +846,14 @@ export default function OrderClient({
     setHasActiveOrders(true);
     setStep("done");
     setCart([]);
+    try {
+      sessionStorage.removeItem(cartStorageKey(tableNumber));
+    } catch {
+      /* ignore */
+    }
     setShowCart(false);
     setShowCheckout(false);
+    setDetailItem(null);
   }
 
   async function submitOrder(e: React.FormEvent) {
@@ -694,14 +866,27 @@ export default function OrderClient({
     setStep("menu");
     setSearchQuery("");
     setCart([]);
+    try {
+      sessionStorage.removeItem(cartStorageKey(tableNumber));
+    } catch {
+      /* ignore */
+    }
     setError("");
     setCheckoutError("");
     setShowCheckout(false);
     setShowCart(false);
+    setDetailItem(null);
   }
 
   function viewOrderStatus() {
     setStep("done");
+  }
+
+  function openItemDetail(item: MenuItem) {
+    setShowCart(false);
+    setShowCheckout(false);
+    setCheckoutError("");
+    setDetailItem(item);
   }
 
   if (step === "done") {
@@ -717,29 +902,40 @@ export default function OrderClient({
   }
 
   return (
-    <main className="order-bg mx-auto min-h-screen max-w-lg pb-28">
-      <header className="order-header sticky top-0 z-10 px-5 py-5">
-        <CafeBrandingBlock branding={branding} logoSize="md" showTagline />
-        <div className="mt-2">
-          <TableHeading tableNumber={tableNumber} tableName={tableName} size="md" />
+    <main className={`order-bg mx-auto min-h-screen max-w-lg ${cartCount > 0 ? "pb-32" : "pb-16"}`}>
+      <header className="order-header sticky top-0 z-10 px-5 pb-3 pt-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <CafeBrandingBlock branding={branding} logoSize="md" showTagline />
+            <div className="mt-2">
+              <TableHeading tableNumber={tableNumber} tableName={tableName} size="md" />
+            </div>
+            {hasSavedDetails ? (
+              <p className="mt-1 text-xs text-brand-subtle">
+                Ordering as <strong className="text-brand-muted">{customerName}</strong>
+              </p>
+            ) : null}
+          </div>
+          <Link href="/my-orders" className="order-nav-link shrink-0">
+            My orders
+          </Link>
         </div>
-        <p className="mt-0.5 text-xs text-brand-subtle">Use + to add items to your order</p>
-        {hasSavedDetails && (
-          <p className="mt-1 text-xs text-brand-subtle">
-            Ordering as <strong className="text-brand-muted">{customerName}</strong>
-          </p>
-        )}
-        {hasActiveOrders && step === "menu" && (
-          <button
-            type="button"
-            onClick={viewOrderStatus}
-            className="mt-2 text-xs font-semibold text-[var(--brand-primary)] underline-offset-2 hover:underline"
-          >
-            View order status →
-          </button>
-        )}
 
-        {!loading && items.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+          {hasActiveOrders ? (
+            <button
+              type="button"
+              onClick={viewOrderStatus}
+              className="text-xs font-semibold text-[var(--brand-primary)] underline-offset-2 hover:underline"
+            >
+              View order status →
+            </button>
+          ) : (
+            <p className="text-xs text-brand-subtle">Tap ADD to build your order</p>
+          )}
+        </div>
+
+        {!loading && items.length > 0 ? (
           <div className="relative mt-4">
             <svg
               className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-cafe-400"
@@ -759,11 +955,11 @@ export default function OrderClient({
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search menu…"
+              placeholder="Search dishes, offers…"
               className="menu-search-input"
               aria-label="Search menu"
             />
-            {searchQuery && (
+            {searchQuery ? (
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
@@ -772,23 +968,49 @@ export default function OrderClient({
               >
                 ×
               </button>
-            )}
+            ) : null}
           </div>
-        )}
+        ) : null}
+
+        {!loading && visibleSections.length > 1 ? (
+          <div className="category-chip-rail -mx-5 mt-3 border-t-0">
+            <div
+              ref={chipRailRef}
+              className="category-chip-rail__scroll"
+              role="tablist"
+              aria-label="Menu categories"
+            >
+              {visibleSections.map((section) => {
+                const active = activeCategoryKey === section.key;
+                return (
+                  <button
+                    key={section.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    data-chip-key={section.key}
+                    onClick={() => scrollToCategory(section.key)}
+                    className={`category-chip ${active ? "category-chip--active" : ""}`}
+                  >
+                    {section.title}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
       </header>
 
-      {!normalizedSearch && offers.length > 0 && (
+      {hasVisibleOffers ? (
         <section className="px-5 py-4">
           <div className="mb-3 space-y-1">
-            <h2 className="text-sm font-bold leading-tight text-cafe-900">
-              Offers &amp; combos
-            </h2>
+            <h2 className="text-sm font-bold leading-tight text-cafe-900">Offers &amp; combos</h2>
             <p className="text-xs leading-snug text-cafe-500">
               Bundle deals — add a full combo in one tap
             </p>
           </div>
           <div className="menu-suggestions">
-            {offers.map((offer) => (
+            {visibleOffers.map((offer) => (
               <OfferCard
                 key={offer.id}
                 offer={offer}
@@ -800,19 +1022,19 @@ export default function OrderClient({
             ))}
           </div>
         </section>
-      )}
+      ) : null}
 
       {loading ? (
         <p className="px-5 py-8 text-center text-cafe-500">Loading menu…</p>
       ) : error && !items.length ? (
         <p className="px-5 py-8 text-center text-red-600">{error}</p>
-      ) : normalizedSearch && !hasVisibleMenuItems ? (
+      ) : normalizedSearch && !hasVisibleMenuItems && !hasVisibleOffers ? (
         <p className="px-5 py-8 text-center text-cafe-500">
           No items match &ldquo;{searchQuery.trim()}&rdquo;
         </p>
       ) : (
         <>
-          {!normalizedSearch && suggestions.length > 0 && (
+          {!normalizedSearch && suggestions.length > 0 ? (
             <section className="px-5 py-4">
               <div className="mb-3 space-y-1">
                 <h2 className="text-sm font-bold leading-tight text-cafe-900">
@@ -839,46 +1061,41 @@ export default function OrderClient({
                     isPreparing={preparingItemIds.has(item.id)}
                     onAdd={() => addToCart(item)}
                     onUpdateQty={(delta) => updateQty(item.id, delta)}
+                    onOpenDetail={() => openItemDetail(item)}
                   />
                 ))}
               </div>
             </section>
-          )}
+          ) : null}
 
-          <div className="space-y-7 px-5 pt-2 pb-2">
-          {categories.map((cat) => {
-            const catItems = visibleItemsByCategory.get(cat.id);
-            if (!catItems?.length) return null;
-            return (
+          <div className="space-y-8 px-5 pb-2 pt-2">
+            {visibleSections.map((section) => (
               <MenuCategorySection
-                key={cat.id}
-                title={cat.name}
-                items={catItems}
-                expanded={isCategoryExpanded(cat.id)}
-                onToggle={() => toggleCategory(cat.id)}
+                key={section.key}
+                sectionKey={section.key}
+                title={section.title}
+                items={section.items}
                 cartQtyById={cartQtyById}
                 preparingItemIds={preparingItemIds}
                 onAdd={addToCart}
                 onUpdateQty={updateQty}
+                onOpenDetail={openItemDetail}
               />
-            );
-          })}
-
-          {visibleItemsByCategory.get("other")?.length ? (
-            <MenuCategorySection
-              title="Other"
-              items={visibleItemsByCategory.get("other")!}
-              expanded={isCategoryExpanded("other")}
-              onToggle={() => toggleCategory("other")}
-              cartQtyById={cartQtyById}
-              preparingItemIds={preparingItemIds}
-              onAdd={addToCart}
-              onUpdateQty={updateQty}
-            />
-          ) : null}
+            ))}
           </div>
         </>
       )}
+
+      {detailItem ? (
+        <ItemDetailSheet
+          item={detailItem}
+          quantity={cartQtyById.get(detailItem.id) ?? 0}
+          isPreparing={preparingItemIds.has(detailItem.id)}
+          onClose={() => setDetailItem(null)}
+          onAdd={() => addToCart(detailItem)}
+          onUpdateQty={(delta) => updateQty(detailItem.id, delta)}
+        />
+      ) : null}
 
       {cartCount > 0 && showCart ? (
         <button
@@ -893,21 +1110,32 @@ export default function OrderClient({
         />
       ) : null}
 
-      {cartCount > 0 && (
+      {cartCount > 0 && !detailItem ? (
         <div className={`cart-sheet${showCart ? " cart-sheet--open" : ""}`}>
           {!showCart ? (
             <button
               type="button"
-              onClick={() => setShowCart(true)}
-              className="order-btn mx-auto flex w-full max-w-lg items-center justify-between"
+              onClick={() => {
+                setDetailItem(null);
+                setShowCart(true);
+              }}
+              className="cart-bar mx-auto flex w-full max-w-lg items-center justify-between gap-3"
             >
-              <span>Review order · {cartCount} items</span>
-              <span>{formatPrice(cartTotal)}</span>
+              <span className="cart-bar__badge" aria-hidden>
+                {cartCount}
+              </span>
+              <span className="min-w-0 flex-1 text-left font-semibold">
+                View cart
+                <span className="mt-0.5 block text-xs font-medium opacity-90">
+                  {cartCount} item{cartCount === 1 ? "" : "s"} · {formatPrice(cartTotal)}
+                </span>
+              </span>
+              <span className="shrink-0 text-sm font-bold tracking-wide">VIEW →</span>
             </button>
           ) : (
-            <div className="cart-sheet__panel mx-auto max-w-lg space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-cafe-900">Your order</h3>
+            <div className="cart-sheet__panel mx-auto flex max-w-lg flex-col">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-lg font-bold text-cafe-900">Your cart</h3>
                 <button
                   type="button"
                   onClick={() => {
@@ -917,19 +1145,24 @@ export default function OrderClient({
                   }}
                   className="text-sm font-medium text-cafe-600"
                 >
-                  ← Back
+                  ← Menu
                 </button>
               </div>
 
-              <div className="space-y-2">
+              <div className="mt-4 flex-1 space-y-2 overflow-y-auto">
                 {cart.map((item) => (
                   <div key={item.lineId} className="cart-line">
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="font-medium text-cafe-900">{item.name}</p>
                       {item.includes ? (
                         <p className="text-xs text-cafe-500">{item.includes}</p>
                       ) : null}
-                      <p className="text-sm text-cafe-500">{formatPrice(item.price)}</p>
+                      <p className="text-sm text-cafe-500">
+                        {formatPrice(item.price)}
+                        {item.quantity > 1
+                          ? ` · ${formatPrice(item.price * item.quantity)}`
+                          : ""}
+                      </p>
                     </div>
                     <div className="qty-controls">
                       <button
@@ -966,80 +1199,86 @@ export default function OrderClient({
                 ))}
               </div>
 
-              <div>
-                <TableHeading tableNumber={tableNumber} tableName={tableName} size="sm" />
-              </div>
+              <div className="mt-4 space-y-3 border-t border-cafe-200 pt-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-cafe-600">Items total</span>
+                  <span className="font-bold text-cafe-900">{formatPrice(cartTotal)}</span>
+                </div>
+                <div>
+                  <TableHeading tableNumber={tableNumber} tableName={tableName} size="sm" />
+                </div>
 
-              {!showCheckout ? (
-                <button
-                  type="button"
-                  onClick={openCheckout}
-                  disabled={submitting}
-                  className="order-btn w-full"
-                >
-                  {submitting
-                    ? "Sending order…"
-                    : hasSavedDetails
-                      ? `Place order · ${formatPrice(cartTotal)}`
-                      : `Continue · ${formatPrice(cartTotal)}`}
-                </button>
-              ) : (
-                <form
-                  onSubmit={submitOrder}
-                  className="space-y-4 rounded-2xl border border-cafe-200 bg-cafe-50/80 p-4"
-                >
-                  <p className="text-sm font-semibold text-cafe-800">Almost done — your details</p>
+                {!showCheckout ? (
+                  <button
+                    type="button"
+                    onClick={openCheckout}
+                    disabled={submitting}
+                    className="order-btn w-full"
+                  >
+                    {submitting
+                      ? "Sending order…"
+                      : hasSavedDetails
+                        ? `Place order · ${formatPrice(cartTotal)}`
+                        : `Continue · ${formatPrice(cartTotal)}`}
+                  </button>
+                ) : (
+                  <form
+                    onSubmit={submitOrder}
+                    className="space-y-4 rounded-2xl border border-cafe-200 bg-cafe-50/80 p-4"
+                  >
+                    <p className="text-sm font-semibold text-cafe-800">Almost done — your details</p>
 
-                  <div>
-                    <label htmlFor="checkout-name" className="order-label">
-                      Your name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      id="checkout-name"
-                      type="text"
-                      placeholder="e.g. Rahul"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      className="order-input"
-                      autoComplete="name"
-                      autoFocus
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="checkout-phone" className="order-label">
-                      Phone number <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-cafe-400">
-                        +91
-                      </span>
+                    <div>
+                      <label htmlFor="checkout-name" className="order-label">
+                        Your name <span className="text-red-500">*</span>
+                      </label>
                       <input
-                        id="checkout-phone"
-                        type="tel"
-                        inputMode="numeric"
-                        placeholder="98765 43210"
-                        value={customerPhone}
-                        onChange={(e) => setCustomerPhone(e.target.value)}
-                        className="order-input pl-14"
-                        autoComplete="tel"
+                        id="checkout-name"
+                        type="text"
+                        placeholder="e.g. Rahul"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        className="order-input"
+                        autoComplete="name"
+                        autoFocus
                         required
                       />
                     </div>
-                  </div>
 
-                  {checkoutError && <p className="text-sm text-red-600">{checkoutError}</p>}
+                    <div>
+                      <label htmlFor="checkout-phone" className="order-label">
+                        Phone number <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-cafe-400">
+                          +91
+                        </span>
+                        <input
+                          id="checkout-phone"
+                          type="tel"
+                          inputMode="numeric"
+                          placeholder="98765 43210"
+                          value={customerPhone}
+                          onChange={(e) => setCustomerPhone(e.target.value)}
+                          className="order-input pl-14"
+                          autoComplete="tel"
+                          required
+                        />
+                      </div>
+                    </div>
 
-                  <button type="submit" disabled={submitting} className="order-btn w-full">
-                    {submitting ? "Sending order…" : `Confirm · ${formatPrice(cartTotal)}`}
-                  </button>
-                </form>
-              )}
+                    {checkoutError ? <p className="text-sm text-red-600">{checkoutError}</p> : null}
+
+                    <button type="submit" disabled={submitting} className="order-btn w-full">
+                      {submitting ? "Sending order…" : `Confirm · ${formatPrice(cartTotal)}`}
+                    </button>
+                  </form>
+                )}
+              </div>
             </div>
           )}
         </div>
-      )}
+      ) : null}
       <DeveloperCredit className="px-5 pb-2 pt-6" />
     </main>
   );
