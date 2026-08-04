@@ -1314,8 +1314,18 @@ export default function OrderClient({
             <div className="cart-sheet__panel mx-auto flex max-w-lg flex-col">
               {showCheckout ? (
                 <>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-lg font-bold text-cafe-900">Your details</h3>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowCheckoutItems((v) => !v)}
+                        className="checkout-items-btn shrink-0"
+                        aria-expanded={showCheckoutItems}
+                      >
+                        {showCheckoutItems ? "Hide items" : "View items"}
+                        <span className="checkout-items-btn__badge">{cartCount}</span>
+                      </button>
                       <button
                         type="button"
                         onClick={() => {
@@ -1325,98 +1335,91 @@ export default function OrderClient({
                         }}
                         className="text-sm font-medium text-cafe-600"
                       >
-                        ← Back to cart
+                        ← Cart
                       </button>
-                      <h3 className="mt-2 text-lg font-bold text-cafe-900">Your details</h3>
-                      <p className="mt-0.5 text-xs text-cafe-500">
-                        {cartCount} item{cartCount === 1 ? "" : "s"} · {formatPrice(cartTotal)}
-                      </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowCheckoutItems((v) => !v)}
-                      className="checkout-items-btn shrink-0"
-                      aria-expanded={showCheckoutItems}
-                    >
-                      {showCheckoutItems ? "Hide items" : "View items"}
-                      <span className="checkout-items-btn__badge">{cartCount}</span>
-                    </button>
                   </div>
 
+                  <p className="mt-1 text-xs text-cafe-500">
+                    {cartCount} item{cartCount === 1 ? "" : "s"} · {formatPrice(cartTotal)}
+                  </p>
+
                   {showCheckoutItems ? (
-                    <div className="checkout-items-panel mt-4 space-y-2">
+                    <div className="mt-4 space-y-2 overflow-y-auto">
                       {cart.map((item) => (
-                        <div key={item.lineId} className="checkout-items-row">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-cafe-900">
+                        <div key={item.lineId} className="cart-line">
+                          <div className="cart-line__info">
+                            <p className="cart-line__name">
                               {item.quantity}× {item.name}
                             </p>
                             {item.includes ? (
-                              <p className="text-[11px] leading-snug text-cafe-500">{item.includes}</p>
+                              <p className="mt-0.5 text-xs leading-snug text-cafe-500">
+                                {item.includes}
+                              </p>
                             ) : null}
                           </div>
-                          <p className="shrink-0 text-sm font-semibold text-cafe-800">
+                          <p className="shrink-0 pt-0.5 text-sm font-semibold text-cafe-800">
                             {formatPrice(item.price * item.quantity)}
                           </p>
                         </div>
                       ))}
-                      <div className="flex items-center justify-between border-t border-cafe-200 pt-2 text-sm">
-                        <span className="text-cafe-600">Total</span>
-                        <span className="font-bold text-cafe-900">{formatPrice(cartTotal)}</span>
-                      </div>
                     </div>
                   ) : null}
 
-                  <form onSubmit={submitOrder} className="mt-5 space-y-4">
+                  <div className="mt-4 space-y-3 border-t border-cafe-200 pt-4">
                     <div>
                       <TableHeading tableNumber={tableNumber} tableName={tableName} size="sm" />
                     </div>
 
-                    <div>
-                      <label htmlFor="checkout-name" className="order-label">
-                        Your name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        id="checkout-name"
-                        type="text"
-                        placeholder="e.g. Rahul"
-                        value={customerName}
-                        onChange={(e) => setCustomerName(e.target.value)}
-                        className="order-input"
-                        autoComplete="name"
-                        autoFocus
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="checkout-phone" className="order-label">
-                        Phone number <span className="text-red-500">*</span>
-                      </label>
-                      <div className="relative">
-                        <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-cafe-400">
-                          +91
-                        </span>
+                    <form onSubmit={submitOrder} className="space-y-4">
+                      <div>
+                        <label htmlFor="checkout-name" className="order-label">
+                          Your name <span className="text-red-500">*</span>
+                        </label>
                         <input
-                          id="checkout-phone"
-                          type="tel"
-                          inputMode="numeric"
-                          placeholder="98765 43210"
-                          value={customerPhone}
-                          onChange={(e) => setCustomerPhone(e.target.value)}
-                          className="order-input pl-14"
-                          autoComplete="tel"
+                          id="checkout-name"
+                          type="text"
+                          placeholder="e.g. Rahul"
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                          className="order-input"
+                          autoComplete="name"
+                          autoFocus
                           required
                         />
                       </div>
-                    </div>
 
-                    {checkoutError ? <p className="text-sm text-red-600">{checkoutError}</p> : null}
+                      <div>
+                        <label htmlFor="checkout-phone" className="order-label">
+                          Phone number <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-cafe-400">
+                            +91
+                          </span>
+                          <input
+                            id="checkout-phone"
+                            type="tel"
+                            inputMode="numeric"
+                            placeholder="98765 43210"
+                            value={customerPhone}
+                            onChange={(e) => setCustomerPhone(e.target.value)}
+                            className="order-input pl-14"
+                            autoComplete="tel"
+                            required
+                          />
+                        </div>
+                      </div>
 
-                    <button type="submit" disabled={submitting} className="order-btn w-full">
-                      {submitting ? "Sending order…" : `Confirm order · ${formatPrice(cartTotal)}`}
-                    </button>
-                  </form>
+                      {checkoutError ? <p className="text-sm text-red-600">{checkoutError}</p> : null}
+
+                      <button type="submit" disabled={submitting} className="order-btn w-full">
+                        {submitting
+                          ? "Sending order…"
+                          : `Confirm order · ${formatPrice(cartTotal)}`}
+                      </button>
+                    </form>
+                  </div>
                 </>
               ) : (
                 <>
