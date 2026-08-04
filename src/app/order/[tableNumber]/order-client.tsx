@@ -1279,7 +1279,9 @@ export default function OrderClient({
 
       {(cartCount > 0 || orderPlacedSuccess) && !detailItem ? (
         <div
-          className={`cart-sheet${showCart || orderPlacedSuccess ? " cart-sheet--open" : ""}`}
+          className={`cart-sheet${showCart || orderPlacedSuccess ? " cart-sheet--open" : ""}${
+            showCheckout && !orderPlacedSuccess ? " cart-sheet--checkout" : ""
+          }`}
         >
           {orderPlacedSuccess ? (
             <div className="mx-auto w-full max-w-lg py-2">

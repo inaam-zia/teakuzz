@@ -336,6 +336,10 @@
     padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
   }
 
+  .cart-sheet--checkout {
+    @apply px-2.5;
+  }
+
   .cart-sheet--open {
     max-height: min(85dvh, 100%);
     overflow: hidden;
