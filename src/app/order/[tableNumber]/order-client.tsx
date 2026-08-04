@@ -42,8 +42,8 @@ function cartStorageKey(tableNumber: number) {
   return `cafe-cart-table-${tableNumber}`;
 }
 
-const SLIDE_THUMB_SIZE = 48;
-const SLIDE_TRACK_PAD = 4;
+const SLIDE_THUMB_SIZE = 56;
+const SLIDE_TRACK_PAD = 0;
 
 function SlideToPlaceOrder({
   label,
@@ -52,11 +52,12 @@ function SlideToPlaceOrder({
 }: {
   label: string;
   disabled?: boolean;
-  onConfirm: () => void;
+  onConfirm: () => boolean | Promise<boolean>;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const [success, setSuccess] = useState(false);
   const dragStartX = useRef(0);
   const dragStartOffset = useRef(0);
   const maxOffsetRef = useRef(0);
@@ -73,14 +74,20 @@ function SlideToPlaceOrder({
   function reset() {
     offsetRef.current = 0;
     draggingRef.current = false;
+    confirmedRef.current = false;
     setOffset(0);
     setDragging(false);
-    confirmedRef.current = false;
+    setSuccess(false);
   }
 
   useEffect(() => {
-    reset();
-  }, [label, disabled]);
+    if (success) return;
+    offsetRef.current = 0;
+    draggingRef.current = false;
+    confirmedRef.current = false;
+    setOffset(0);
+    setDragging(false);
+  }, [label, disabled, success]);
 
   useEffect(() => {
     function onResize() {
@@ -94,7 +101,7 @@ function SlideToPlaceOrder({
   }, []);
 
   function onPointerDown(e: React.PointerEvent<HTMLButtonElement>) {
-    if (disabled || confirmedRef.current) return;
+    if (disabled || confirmedRef.current || success) return;
     maxOffsetRef.current = measureMax();
     dragStartX.current = e.clientX;
     dragStartOffset.current = offsetRef.current;
@@ -104,7 +111,7 @@ function SlideToPlaceOrder({
   }
 
   function onPointerMove(e: React.PointerEvent<HTMLButtonElement>) {
-    if (!draggingRef.current || disabled || confirmedRef.current) return;
+    if (!draggingRef.current || disabled || confirmedRef.current || success) return;
     const delta = e.clientX - dragStartX.current;
     const next = Math.min(
       maxOffsetRef.current,
@@ -114,7 +121,7 @@ function SlideToPlaceOrder({
     setOffset(next);
   }
 
-  function finishDrag() {
+  async function finishDrag() {
     if (!draggingRef.current) return;
     draggingRef.current = false;
     setDragging(false);
@@ -124,14 +131,33 @@ function SlideToPlaceOrder({
       confirmedRef.current = true;
       offsetRef.current = max;
       setOffset(max);
-      onConfirm();
-      window.setTimeout(reset, 400);
+      try {
+        const keepSuccess = await onConfirm();
+        if (keepSuccess) {
+          setSuccess(true);
+        } else {
+          reset();
+        }
+      } catch {
+        reset();
+      }
       return;
     }
     reset();
   }
 
   const progress = maxOffsetRef.current > 0 ? offset / maxOffsetRef.current : 0;
+
+  if (success) {
+    return (
+      <div className="slide-to-order slide-to-order--success" role="status" aria-live="polite">
+        <span className="slide-to-order__success-icon" aria-hidden>
+          ✓
+        </span>
+        <span className="slide-to-order__success-label">Order placed successfully</span>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -146,8 +172,7 @@ function SlideToPlaceOrder({
       aria-label={label}
       aria-disabled={disabled || undefined}
     >
-      <div className="slide-to-order__fill" style={{ width: offset + SLIDE_THUMB_SIZE / 2 }} />
-      <span className="slide-to-order__label" style={{ opacity: Math.max(0.2, 1 - progress * 1.2) }}>
+      <span className="slide-to-order__label" style={{ opacity: Math.max(0.25, 1 - progress * 1.15) }}>
         {disabled ? "Sending order…" : label}
       </span>
       <button
@@ -158,8 +183,8 @@ function SlideToPlaceOrder({
         aria-label="Slide to place order"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
-        onPointerUp={finishDrag}
-        onPointerCancel={finishDrag}
+        onPointerUp={() => void finishDrag()}
+        onPointerCancel={() => void finishDrag()}
       >
         <svg
           className="h-5 w-5"
@@ -554,6 +579,7 @@ export default function OrderClient({
   const [suggestionsSource, setSuggestionsSource] = useState<"feedback" | "sales" | "menu">("menu");
   const [detailItem, setDetailItem] = useState<MenuItem | null>(null);
   const [activeCategoryKey, setActiveCategoryKey] = useState<string | null>(null);
+  const [orderPlacedSuccess, setOrderPlacedSuccess] = useState(false);
   const scrollMenuToTopRef = useRef(false);
   const chipRailRef = useRef<HTMLDivElement>(null);
   const skipObserverRef = useRef(false);
@@ -650,7 +676,7 @@ export default function OrderClient({
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
 
-  const sheetOpen = showCart || Boolean(detailItem);
+  const sheetOpen = showCart || Boolean(detailItem) || orderPlacedSuccess;
 
   // Lock menu scroll while cart / checkout / item detail is open
   useEffect(() => {
@@ -912,17 +938,17 @@ export default function OrderClient({
     );
   }
 
-  function openCheckout() {
+  async function openCheckout(): Promise<boolean> {
     setCheckoutError("");
     if (hasSavedDetails) {
-      void placeOrder();
-      return;
+      return placeOrder();
     }
     setShowCheckout(true);
+    return false;
   }
 
-  async function placeOrder(override?: { name: string; phone: string }) {
-    if (!cart.length) return;
+  async function placeOrder(override?: { name: string; phone: string }): Promise<boolean> {
+    if (!cart.length) return false;
 
     const name = (override?.name ?? customerName).trim();
     const phone = normalizePhone(override?.phone ?? customerPhone);
@@ -932,19 +958,19 @@ export default function OrderClient({
     if (!name) {
       setCheckoutError("Please enter your name");
       setShowCheckout(true);
-      return;
+      return false;
     }
 
     if (!phone) {
       setCheckoutError("Please enter your phone number");
       setShowCheckout(true);
-      return;
+      return false;
     }
 
     if (!isValidPhone(phone)) {
       setCheckoutError("Please enter a valid 10-digit phone number");
       setShowCheckout(true);
-      return;
+      return false;
     }
 
     setSubmitting(true);
@@ -971,22 +997,29 @@ export default function OrderClient({
 
     if (!res.ok) {
       setCheckoutError(data.error || "Could not place order");
-      return;
+      return false;
     }
 
     setCustomerName(name);
     setCustomerPhone(phone);
     setHasActiveOrders(true);
-    setStep("done");
+    setOrderPlacedSuccess(true);
+    setShowCheckout(false);
+    setDetailItem(null);
     setCart([]);
     try {
       sessionStorage.removeItem(cartStorageKey(tableNumber));
     } catch {
       /* ignore */
     }
-    setShowCart(false);
-    setShowCheckout(false);
-    setDetailItem(null);
+
+    window.setTimeout(() => {
+      setShowCart(false);
+      setOrderPlacedSuccess(false);
+      setStep("done");
+    }, 1200);
+
+    return true;
   }
 
   async function submitOrder(e: React.FormEvent) {
@@ -1225,7 +1258,7 @@ export default function OrderClient({
         />
       ) : null}
 
-      {cartCount > 0 && showCart ? (
+      {cartCount > 0 && showCart && !orderPlacedSuccess ? (
         <button
           type="button"
           className="cart-sheet-backdrop"
@@ -1238,9 +1271,20 @@ export default function OrderClient({
         />
       ) : null}
 
-      {cartCount > 0 && !detailItem ? (
-        <div className={`cart-sheet${showCart ? " cart-sheet--open" : ""}`}>
-          {!showCart ? (
+      {(cartCount > 0 || orderPlacedSuccess) && !detailItem ? (
+        <div
+          className={`cart-sheet${showCart || orderPlacedSuccess ? " cart-sheet--open" : ""}`}
+        >
+          {orderPlacedSuccess ? (
+            <div className="mx-auto w-full max-w-lg py-2">
+              <div className="slide-to-order slide-to-order--success" role="status" aria-live="polite">
+                <span className="slide-to-order__success-icon" aria-hidden>
+                  ✓
+                </span>
+                <span className="slide-to-order__success-label">Order placed successfully</span>
+              </div>
+            </div>
+          ) : !showCart ? (
             <button
               type="button"
               onClick={() => {
@@ -1280,19 +1324,19 @@ export default function OrderClient({
               <div className="mt-4 flex-1 space-y-2 overflow-y-auto">
                 {cart.map((item) => (
                   <div key={item.lineId} className="cart-line">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-cafe-900">{item.name}</p>
+                    <div className="cart-line__info">
+                      <p className="cart-line__name">{item.name}</p>
                       {item.includes ? (
-                        <p className="text-xs text-cafe-500">{item.includes}</p>
+                        <p className="mt-0.5 text-xs leading-snug text-cafe-500">{item.includes}</p>
                       ) : null}
-                      <p className="text-sm text-cafe-500">
+                      <p className="mt-1 text-sm text-cafe-500">
                         {formatPrice(item.price)}
                         {item.quantity > 1
                           ? ` · ${formatPrice(item.price * item.quantity)}`
                           : ""}
                       </p>
                     </div>
-                    <div className="qty-controls">
+                    <div className="cart-line__qty qty-controls">
                       <button
                         type="button"
                         onClick={() =>
@@ -1307,7 +1351,7 @@ export default function OrderClient({
                       >
                         −
                       </button>
-                      <span className="w-5 text-center font-semibold">{item.quantity}</span>
+                      <span className="cart-line__qty-value">{item.quantity}</span>
                       <button
                         type="button"
                         onClick={() =>
